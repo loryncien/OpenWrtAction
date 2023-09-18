@@ -72,6 +72,12 @@ sed -i '/"Control"/d' luci-app-eqosplus/luasrc/controller/eqosplus.lua
 sed -i 's/10/99/g' luci-app-eqosplus/luasrc/controller/eqosplus.lua
 sed -i 's/\"control\"/\"network\"/g' `grep "control" -rl ./luci-app-eqosplus`
 
+echo "Add OpenAppFilter"
+git clone --depth=1 https://github.com/destan19/OpenAppFilter.git
+
+echo "Add luci-app-parentcontrol"
+git clone --depth=1 https://github.com/sirpdboy/luci-app-parentcontrol.git
+
 #echo "Add luci-app-serverchan"
 #find .. -maxdepth 4 -iname "*serverchan" -type d | xargs rm -rf
 #find .. -maxdepth 4 -iname "*pushbot" -type d | xargs rm -rf
@@ -81,9 +87,6 @@ sed -i 's/\"control\"/\"network\"/g' `grep "control" -rl ./luci-app-eqosplus`
 echo "Add luci-app-autotimeset"
 find . -maxdepth 4 -iname "*autotimeset" -type d | xargs rm -rf
 git clone --depth=1 https://github.com/sirpdboy/luci-app-autotimeset.git
-
-echo "Add OpenAppFilter"
-git clone --depth=1 https://github.com/destan19/OpenAppFilter.git
 
 echo "Add aliyundrive-webdav"
 rm -rf ../feeds/luci/applications/luci-app-aliyundrive-webdav
