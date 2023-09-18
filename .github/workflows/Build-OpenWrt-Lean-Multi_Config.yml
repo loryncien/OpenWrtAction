@@ -486,12 +486,12 @@ jobs:
         if: env.SEND_BARK_MSG == 'true' && steps.generate.outputs.status == 'success' && !cancelled()
         uses: shink/bark-action@v2
         with:
-          key: ${{ secrets.BARKKEY }}   # Your secret key, it is required
-          host: ${{ secrets.HOST }}     # Your Bark host, the default is 'https://api.day.app' ${{ secrets.HOST }}
+          key: ${{ secrets.BARKKEY }}    # Your secret key, it is required
+          host: ${{ secrets.BARKHOST }}  # Your Bark host, the default is 'https://api.day.app'
           title: OpenWrt 固件编译完成！
           body: OpenWrt-${{ env.DEVICE_TARGET }}_${{ env.DEVICE_SUBTARGET }}-${{ env.KERNEL_VERSION }}-${{ matrix.config }}
           sound: fanfare
           isArchive: 1
-          # url: https://yuanhaoji.com
+          url: https://github.com/${{ github.repository }}/releases
           # automaticallyCopy: 1
           # copy: Content copied to clipboard
