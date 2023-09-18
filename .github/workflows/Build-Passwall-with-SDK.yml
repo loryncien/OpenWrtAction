@@ -1,0 +1,315 @@
+#
+# Copyright (c) 2022-2023 SMALLPROGRAM <https://github.com/smallprogram>
+# Description: Auto compile
+#
+name: "Build Passwall with SDK"
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      ssh:
+        description: 'SSH connection to Actions'
+        required: false
+        default: 'false'
+  # schedule:
+  #  - cron: 0 18 * * *
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'luci-app-passwall/Makefile'
+env:
+  TZ: Asia/Shanghai
+  passwall: xiaorouji/openwrt-passwall
+  packages: xiaorouji/openwrt-passwall-packages
+
+
+jobs:
+  job_check:
+    name: Check Version
+    runs-on: ubuntu-latest
+    outputs:
+      passwall_version: ${{ steps.check_version.outputs.latest_version }}
+      has_update: ${{ steps.check_version.outputs.has_update }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+        with:
+          repository: xiaorouji/openwrt-passwall
+          fetch-depth: 0
+          ref: 'main'
+
+      - name: Check version
+        id: check_version
+        env:
+          # url_release: https://api.github.com/repos/${{ env.passwall }}/releases/latest
+          url_release: https://api.github.com/repos/${{ github.repository }}/releases
+        run: |
+          latest_version=$(curl -s https://raw.githubusercontent.com/xiaorouji/openwrt-passwall/main/luci-app-passwall/Makefile | grep "PKG_VERSION" | awk -F= '{print $2}')
+          latest_release=$(curl -s ${{env.url_release}} | jq -r '.[] | select(.tag_name | contains("passwall")) | .tag_name' | awk -F"_" '{print $NF}' | head -n 1)
+          has_update=$([ "${latest_version}" != "${latest_release}" ] && echo true || echo false)
+          echo "latest_version=${latest_version}" >> $GITHUB_OUTPUT
+          echo "has_update=${has_update}" >> $GITHUB_OUTPUT
+          echo "latest_version: ${latest_version}"
+          echo "latest_release: ${latest_release}"
+          echo "has_update: ${has_update}"
+
+      - name: Prepare release
+        if: steps.check_version.outputs.has_update == 'true'
+        run: |
+          echo "## :mega:Update content" >> release.txt
+          echo "### Passwall Info" >> release.txt
+          echo "**:minidisc: Passwall Version: ${{steps.check_version.outputs.latest_version}}**" >> release.txt
+          echo "**:gear: OpenWrt SDK Version: 23.05-rc3**" >> release.txt
+          touch release.txt
+
+      - name: Generate new tag & release
+        if: steps.check_version.outputs.has_update == 'true'
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: passwall_${{steps.check_version.outputs.latest_version}}
+          body_path: release.txt
+
+
+  job_build_passwall:
+    name: Build passwall
+    needs: job_check
+    if: needs.job_check.outputs.has_update == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      url_sdk: ${{ steps.initialization_env.outputs.SDK_URL }}
+    steps:
+      - name: Install packages
+        run: |
+          echo "Install packages"
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install build-essential clang flex bison g++ gawk gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget
+          sudo -E apt-get -qq autoremove --purge
+          sudo -E apt-get -qq clean
+
+      - name: Cache openwrt SDK
+        id: cache-sdk
+        uses: actions/cache@v3
+        with:
+          path: sdk
+          key: openwrt-sdk-lean-x86_64
+
+      - name: Initialization environment
+        id: initialization_env
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          TAG_NAME=$(curl -s "https://api.github.com/repos/${{ github.repository }}/releases" | jq -r '.[] | select(.tag_name | startswith("lean")) | .tag_name' | sort -r | head -n1)
+          SDK_URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}')
+          echo "SDK_URL=echo $SDK_URL" >> $GITHUB_OUTPUT
+          echo "SDK_URL=echo $SDK_URL" >> $GITHUB_ENV
+
+          wget -qO- $SDK_URL | tar -xJ
+          mv openwrt-sdk-* sdk
+          cd sdk
+          # echo "src-git passwall_packages https://github.com/${{ env.packages }}.git;main" >> feeds.conf
+          # echo "src-git passwall https://github.com/${{ env.passwall }}.git;main" >> feeds.conf
+          ./scripts/feeds update -a
+          echo "CONFIG_PACKAGE_luci-app-passwall=m" > .config
+          ./scripts/feeds install -d n luci-app-passwall
+          make download -j8
+
+      - name: Configure passwall
+        run: |
+          cd sdk
+          ./scripts/feeds update passwall_packages
+          ./scripts/feeds update passwall
+          ./scripts/feeds install luci-app-passwall
+          echo "CONFIG_ALL_NONSHARED=n" > .config
+          echo "CONFIG_ALL_KMODS=n" >> .config
+          echo "CONFIG_ALL=n" >> .config
+          echo "CONFIG_AUTOREMOVE=n" >> .config
+          echo "CONFIG_LUCI_LANG_zh_Hans=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_Iptables_Transparent_Proxy=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_Nftables_Transparent_Proxy=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Brook=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Hysteria=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_NaiveProxy=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Server=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Server=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_GO=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_tuic_client=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Geodata=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray_Plugin=n" >> .config
+          make defconfig
+
+      - name: Compile passwall
+        id: compile
+        run: |
+          cd sdk
+          echo "make package/luci-app-passwall/{clean,compile} -j$(nproc)"
+          make package/luci-app-passwall/{clean,compile} -j$(nproc)
+          mv bin/packages/x86_64/passwall/ ../
+          rm .config .config.old
+          cd ..
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+
+      - name: Upload passwall ipks to release
+        uses: softprops/action-gh-release@v1
+        if: steps.compile.outputs.status == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: passwall_${{needs.job_check.outputs.passwall_version}}
+          files: ${{ env.FIRMWARE }}/passwall/*.ipk
+
+
+  job_auto_compile:
+    if: needs.job_check.outputs.has_update == 'true'
+    needs: job_check
+    runs-on: ubuntu-latest
+    name: build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: x86_64
+            # url_sdk: https://downloads.openwrt.org/releases/23.05.0-rc3/targets/x86/64/openwrt-sdk-23.05.0-rc3-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+            # url_sdk: ${{needs.job_build_passwall.outputs.url_sdk}}
+            url_sdk: https://github.com/${{ github.repository }}/releases/download/toolchain/openwrt-sdk-x86-64_gcc-11.3.0_musl.Linux-x86_64.tar.xz
+
+    steps:
+      - name: Initialization ${{ matrix.platform }} compile environment
+        run: |
+          echo "install packages!!!!!!"
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install $(curl -fsSL https://github.com/smallprogram/OpenWrtAction/raw/main/diy_script/official_dependence)
+          sudo -E apt-get -qq autoremove --purge
+          sudo -E apt-get -qq clean
+
+      - name: ${{ matrix.platform }} sdk download
+        run: |
+          wget ${{ matrix.url_sdk }}
+          file_name=$(echo ${{matrix.url_sdk}} | awk -F/ '{print $NF}')
+          mkdir sdk && tar -xJf $file_name -C ./sdk --strip-components=1
+          cd sdk
+
+      - name: SSH connection to Actions
+        uses: mxschmitt/action-tmate@v3.13
+        if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+
+      - name: ${{ matrix.platform }} feeds configuration packages
+        run: |
+          cd sdk
+          #echo "src-git base https://github.com/openwrt/openwrt.git;openwrt-23.05" > feeds.conf
+          #echo "src-git packages https://github.com/openwrt/packages.git;openwrt-23.05" >> feeds.conf
+          #echo "src-git luci https://github.com/openwrt/luci.git;openwrt-23.05" >> feeds.conf
+          #echo "src-git routing https://git.openwrt.org/feed/routing.git;openwrt-23.05"  >> feeds.conf
+          #echo "src-git passwall_packages https://github.com/${{ env.packages }}.git;main" >> feeds.conf
+          #echo "src-git passwall https://github.com/${{ env.passwall }}.git;main" >> feeds.conf
+
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a -f -p passwall_packages
+          ./scripts/feeds install luci-app-passwall
+
+          echo "CONFIG_ALL_NONSHARED=n" > .config
+          echo "CONFIG_ALL_KMODS=n" >> .config
+          echo "CONFIG_ALL=n" >> .config
+          echo "CONFIG_AUTOREMOVE=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_Iptables_Transparent_Proxy=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_Nftables_Transparent_Proxy=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Brook=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Hysteria=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_NaiveProxy=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Server=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Server=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_GO=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_tuic_client=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Geodata=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray_Plugin=y" >> .config
+
+          make defconfig
+
+
+      - name: ${{ matrix.platform }} download
+        run: |
+          cd sdk
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+
+      - name: ${{ matrix.platform }} compile
+        id: compile
+        run: |
+          cd sdk
+          make package/luci-app-passwall/{clean,compile} -j$(nproc)
+
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Organize ${{ matrix.platform }} files
+        id: organize
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd sdk
+          mkdir upload
+
+          zip -jr upload/passwall_packages_ipk_${{ matrix.platform }}.zip bin/packages/*/passwall_packages/
+
+          echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Generate release info
+        id: info
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd sdk
+          echo "## :mega:Update content" >> release.txt
+          echo "### Passwall Info" >> release.txt
+          echo "**:minidisc: Passwall Version: ${{needs.job_check.outputs.passwall_version}}**" >> release.txt
+          echo "**:gear: OpenWrt SDK Version: 23.05-rc3**" >> release.txt
+
+          echo "### Packages Version" >> release.txt
+          echo "**package name**|**package version**" >> release.txt
+          echo "-|-" >> release.txt
+
+          pkgs=$(ls feeds/passwall_packages -I v2ray-geodata)
+          for pkg in $pkgs; do
+            version=$(awk -F ':=' '/PKG_VERSION:=/{print $2}' feeds/passwall_packages/$pkg/Makefile | sed 's/\r//g')
+            [ -z "${version}" ] && version=$(awk -F ':=' '/PKG_SOURCE_DATE:=/{print $2}' feeds/passwall_packages/$pkg/Makefile | sed 's/\r//g')
+            echo "**:ice_cube: $pkg**|**${version}**" >> release.txt
+          done
+          echo "**:ice_cube: v2ray-geoip**|**$(awk -F ':=' '/GEOIP_VER:=/{print $2}' feeds/passwall_packages/v2ray-geodata/Makefile)**" >> release.txt
+          echo "**:ice_cube: v2ray-geosite**|**$(awk -F ':=' '/GEOSITE_VER:=/{print $2}' feeds/passwall_packages/v2ray-geodata/Makefile)**" >> release.txt
+
+          touch release.txt
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Upload firmware to release
+        uses: softprops/action-gh-release@v1
+        if: steps.info.outputs.status == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: passwall-${{needs.job_check.outputs.passwall_version}}
+          body_path: ${{ env.FIRMWARE }}/release.txt
+          files: ${{ env.FIRMWARE }}/upload/*
