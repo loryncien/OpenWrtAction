@@ -31,10 +31,14 @@ delete dhcp.lan.ndp
 delete network.globals.ula_prefix
 delete network.wan6
 
-# disable IPV6 DNS
-set dhcp.@dnsmasq[0].filter_aaaa='1'
+# Disable IPV6 DNS
 set dhcp.@dnsmasq[0].rebind_protection='1'
 set dhcp.@dnsmasq[0].rebind_localhost='1'
+
+# Disable Turboacc for control
+set turboacc.config.sfe_flow='0'
+set turboacc.config.sw_flow='0'
+set turboacc.config.hw_flow='0'
 commit
 EOF
 
