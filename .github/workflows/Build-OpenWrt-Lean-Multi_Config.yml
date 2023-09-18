@@ -215,12 +215,11 @@ jobs:
   job_compile_openwrt:
     needs: [Toolchain]
     runs-on: ubuntu-22.04
-    name: Compile OpenWrt x86_64 $KERNEL_PATCHVER (${{ matrix.config }})
+    name: Build-OpenWrt-x86_64-$KERNEL_PATCHVER-${{ matrix.config }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          config: [lite, plus]
+        config: [lite, plus]
 
     steps:
       - name: Restore Variables
