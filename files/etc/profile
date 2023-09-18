@@ -11,29 +11,34 @@ Sysinfo() {
 	}
 	local Firmwaree="Frame"
 	[ ! -e /etc/openwrt_info ] && {
-    local Firmwaree="Frame"
-    local Luci_Revision=${DISTRIB_REVISION}
-    local Luci_Release=${DISTRIB_RELEASE}
+		local Firmwaree="Frame"
+		local Luci_Revision=${DISTRIB_REVISION}
+		local Luci_Release=${DISTRIB_RELEASE}
 	}
-	local Cpu_model=$(cat /proc/cpuinfo | grep name | cut -f2 -d: | sort | uniq | sed 's/^[ \t]*//g;s/[ ][ ]*/ /g')
-	local Cpu_cores=$(cat /proc/cpuinfo | grep cores | cut -f2 -d: | sort | uniq | sed 's/^[ \t]*//g')
-	local Cpu_thread=$(cat /proc/cpuinfo | grep name | uniq -c |sed 's/^[ \t]*//g' | cut -d' ' -f1)
-	local Cpu_MHz=$(cpuinfo | grep -v '.sh'| sed 's/^[ \t]*//g;s/(.*)//')
-	local IP_Address=$(ifconfig -a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | tr -d "addr:" | awk 'NR==1')
+	local CPU_Model=$(awk -F': ' '/model name/{print ($2);exit}' /proc/cpuinfo | sed 's/[ ][ ]*/ /g')
+	local CPU_Cores=$(awk -F': ' '/cores/{print ($2);exit}' /proc/cpuinfo)
+	local CPU_Thread=$(grep -c "model name" /proc/cpuinfo)
+	local CPU_MHz=$(cpuinfo | grep -v '.sh'| sed 's/^[ \t]*//g;s/(.*)//')
+	#local IP_Address=$(ifconfig -a | grep inet | grep -v 127.0.0.1 | grep -v inet6 | awk '{print $2}' | tr -d "addr:" | awk 'NR==1')
+	local IP_Address=`ip -4 a | egrep "br-lan" | grep "inet" | awk '{print $2}'`
 	local CoreMark=$([ -f /etc/bench.log ] && egrep -o "[0-9]+" /etc/bench.log | awk 'NR==1')
 	local Startup=$(awk '{a=$1/86400;b=($1%86400)/3600;c=($1%3600)/60;d=($1%60)} {printf("%d Days %d Hours %d Minutes\n",a,b,c,d)}' /proc/uptime)
-	local Overlay_Available="$(df -h | grep ":/overlay" | awk '{print $4}' | awk 'NR==1')"
-	local Tmp_Available="$(df -h | grep "/tmp" | awk '{print $4}' | awk 'NR==1')"
+	local Mem_sum=$(Free | grep Mem | awk '{a=$2/1024} {printf("%dMB\n",a)}')
+	local Mem_Free=$(Free | grep Mem | awk '{a=$7/1024} {printf("%dMB\n",a)}')
+	local Overlay_sum="$(df -h | grep ":/overlay" | awk '{print $2}' | awk 'NR==1')"
+	local Overlay_Free="$(df -h | grep ":/overlay" | awk '{print $4}' | awk 'NR==1')"
+	local Tmp_sum="$(df -h | grep "/tmp" | awk '{print $2}' | awk 'NR==1')"
+	local Tmp_Free="$(df -h | grep "/tmp" | awk '{print $4}' | awk 'NR==1')"
 	local TEMP=$(sensors 2>/dev/null | grep 'Core 0' | awk '{print $3}')
 	local KERNELL="$(egrep -o "[0-9]+\.[0-9]+\.[0-9]+" /usr/lib/opkg/info/kernel.control)"
 	cat  <<-EOF
-	 $(echo -e "Model:   ${Green}${Cpu_model} | ${Cpu_cores}C${Cpu_thread}T${White}")
+	 $(echo -e "Model:   ${Green}${CPU_Model} | ${CPU_Cores}C${CPU_Thread}T${White}")
 	 $(echo -e "${Firmwaree}:   ${Skyb}$(uname -n) ${Luci_Revision}${White}")
-	 $(echo -e "Freqs:   ${Purple}${Cpu_MHz}${White}")
+	 $(echo -e "Freqs:   ${Purple}${CPU_MHz}${White}")
 	 $(echo -e "Kernel:  ${Green}${KERNELL}${White} | ${CURRENT_Version}")
 	 $(echo -e "Lan_IP:  ${Skyb}${IP_Address}${White}")
 	 Uptime:  ${Startup}
-	 Free:    Overlay: ${Overlay_Available} | Tmp: ${Tmp_Available}
+	 Free:    Overlay: ${Overlay_Free} | Tmp: ${Tmp_Free} | Mem: ${Mem_Free}
 	 $([ -n "${CoreMark}" ] && echo -e "Score:   CoreMark: ${CoreMark}")
 	EOF
 	echo
@@ -80,7 +85,7 @@ esac
 }
 
 if ( grep -qs '^root::' /etc/shadow && \
-     [ -z "$FAILSAFE" ] )
+	[ -z "$FAILSAFE" ] )
 then
 cat << EOF
  ==== WARNING! ====================================
@@ -103,10 +108,10 @@ alias top='top -d 1'
 alias fdir='find . -type d -name'
 alias ff='find . -type f -name'
 ffrm() {
-    find . -name "$1" -type f -ok rm {} \;
+	find . -name "$1" -type f -ok rm {} \;
 }
 fdrm() {
-    find . -name "$1" -type d -print0 | xargs -0 rm -rf
+	find . -name "$1" -type d -print0 | xargs -0 rm -rf
 }
 
 # ls
@@ -120,7 +125,7 @@ alias lk='ll -Sr'         # long format, largest file size last
 alias lt='ll -tr'         # long format, newest modification time last
 alias lc='lt -c'          # long format, newest status change (ctime) last
 alias dh='df -h'
-alias ramfree='sync && echo 3 > /proc/sys/vm/drop_caches'
+alias ramFree='sync && echo 3 > /proc/sys/vm/drop_caches'
 lan() {
     [[ -n ${1} ]] && uci set network.lan.ipaddr="${1}" && ifup lan
 }
