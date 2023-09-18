@@ -212,10 +212,10 @@ jobs:
           artifacts: output/*
           body: OpenWrt 工具链镜像文件
 
-  job_compile_openwrt:
+  job_build:
     needs: [Toolchain]
     runs-on: ubuntu-22.04
-    name: Build-OpenWrt-x86_64-$KERNEL_PATCHVER-${{ matrix.config }}
+    name: Build-OpenWrt-x86_64-${{ env.KERNEL_PATCHVER }}-${{ matrix.config }}
     strategy:
       fail-fast: false
       matrix:
