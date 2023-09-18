@@ -1,0 +1,195 @@
+[global]
+	netbios name = |NAME|
+	interfaces = |INTERFACES|
+	server string = |DESCRIPTION|
+	unix charset = |CHARSET|
+	workgroup = |WORKGROUP|
+
+	## This global parameter allows the Samba admin to limit what interfaces on a machine will serve SMB requests.
+	## 此全局参数允许 Samba 管理员限制机器上的哪些接口将监听 SMB 请求。
+	bind interfaces only = no
+
+	## max connections用来指定连接Samba Server的最大连接数目。如果超出连接数目，则新的连接请求将被拒绝。0表示不限制。
+	max connections = 0
+
+	## time for inactive connections to-be closed in minutes
+	## deadtime用来设置断掉一个没有打开任何文件的连接的时间。单位是分钟，0代表Samba Server不自动切断任何连接。
+	deadtime = 15
+
+	## disable core dumps
+	enable core files = no
+
+	## set security (auto, user, domain, ads)
+	##设置安全等级（自动，用户，域，活动目录服务）
+	##设置用户访问Samba Server的验证方式，一共有四种验证方式的安全级别。
+	##auto：表示自动判断，不需要samba账户就可登陆samba服务器。即用户访问Samba Server不需要提供用户名和口令, 安全性能较低。+经测试是在没有设定“valid users”参数就会判断为匿名访问
+	##user：表示系统账户要先添加进samba库然后变成samba用户，使用samba用户来登陆，简单来讲就是需要使用用户密码登录。Samba Server共享目录只能被授权的用户访问,由Samba Server负责检查账号和密码的正确性。账号和密码要在本Samba Server中建立。安全性能适中。
+	##domain：表示把 samba 服务器加入到N 域，由NT的域控制器来进行身份验证。域安全级别,使用主域控制器(PDC)来完成认证。
+	##ADS ：（Active Directory Service，活动目录服务），是samba3.0中新增的身份验证方式，采用ADS验证方式，samba服务器集成到活动目录中。
+	security = user
+
+	## This parameter controls whether a remote client is allowed or required to use SMB encryption.
+	## 该参数控制是否允许或要求远程客户端使用SMB加密。
+	## It has different effects depending on whether the connection uses SMB1 or SMB2 and newer:
+	## 根据连接使用SMB1或SMB2及更高版本，效果会有所不同：
+	## If the connection uses SMB1, then this option controls the use of a Samba-specific extension to the SMB protocol introduced in Samba 3.2 that makes use of the Unix extensions.
+	## 如果连接使用SMB1，则此选项控制Samba 3.2中引入的特定于Samba的SMB协议扩展的使用，该协议使用Unix扩展。
+	## If the connection uses SMB2 or newer, then this option controls the use of the SMB-level encryption that is supported in SMB version 3.0 and above and available in Windows 8 and newer. 
+	## 如果连接使用SMB2或更高版本，则此选项控制SMB 3.0及更高版本支持、Windows 8及更高版本提供的SMB级别加密的使用。
+	## (default/auto,desired,required,off)
+	##（默认/自动、所需、必需、关闭）
+	#smb encrypt = default
+
+	## set invalid users
+	## 设置无效用户
+	#invalid users = root
+
+	## map unknow users to guest
+	## 将未知用户映射为访客
+	map to guest = Bad User
+
+	## allow client access to accounts that have null passwords. 
+	## 允许客户端访问具有空密码的帐户。
+	null passwords = yes
+
+	## The old plaintext passdb backend. Some Samba features will not work if this passdb backend is used. (NOTE: enabled for size reasons)
+	## 旧的明文passdb后端。如果使用此passdb后端，某些Samba功能将无法工作。（注意：由于尺寸原因而启用）
+	## (tdbsam,smbpasswd,ldapsam)
+	## passdb backend就是用户后台的意思。目前有三种后台：smbpasswd、tdbsam和ldapsam。sam应该是security account manager（安全账户管理）的简写。
+	## 1）smbpasswd：该方式是使用smb自己的工具smbpasswd来给系统用户（真实用户或者虚拟用户）设置一个Samba密码，客户端就用这个密码来访问Samba的资源。smbpasswd文件默认在/etc/samba目录下，不过有时候要手工建立该文件。
+	## 2）tdbsam：该方式则是使用一个数据库文件来建立用户数据库。数据库文件叫passdb.tdb，默认在/etc/samba目录下。passdb.tdb用户数据库可以使用smbpasswd –a来建立Samba用户，不过要建立的Samba用户必须先是系统用户。我们也可以使用pdbedit命令来建立Samba账户。pdbedit命令的参数很多，我们列出几个主要的。
+	## pdbedit –a username：新建Samba账户。
+	## pdbedit –x username：删除Samba账户。
+	## pdbedit –L：列出Samba用户列表，读取passdb.tdb数据库文件。
+	## pdbedit –Lv：列出Samba用户列表的详细信息。
+	## pdbedit –c “[D]” –u username：暂停该Samba用户的账号。
+	## pdbedit –c “[]” –u username：恢复该Samba用户的账号。
+	## 3）ldapsam：该方式则是基于LDAP的账户管理方式来验证用户。首先要建立LDAP服务，然后设置“passdb backend = ldapsam:ldap://LDAP Server”
+	passdb backend = smbpasswd
+
+	## Set location of smbpasswd ('smbd -b' will show default compiled location)
+	## 设置smbpasswd的位置（'smbd-b'将显示默认的编译位置）
+	#smb passwd file = /etc/samba/smbpasswd 
+
+	## LAN (IPTOS_LOWDELAY TCP_NODELAY) WAN (IPTOS_THROUGHPUT) WiFi (SO_KEEPALIVE) try&error for buffer sizes (SO_RCVBUF=65536 SO_SNDBUF=65536)
+	## 用来设置服务器和客户端之间会话的Socket选项，可以优化传输速度
+	#socket options = IPTOS_LOWDELAY TCP_NODELAY
+	socket options = IPTOS_LOWDELAY TCP_NODELAY SO_RCVBUF=131072 SO_SNDBUF=131072
+
+
+	## If this integer parameter is set to a non-zero value, Samba will read from files asynchronously when the request size is bigger than this value.
+	## 如果此整数参数设置为非零值，当请求大小大于此值时，Samba 将异步读取文件。
+	## Note that it happens only for non-chained and non-chaining reads and when not using write cache.
+	## 请注意，它仅发生在非链接和非链接读取以及不使用写入缓存时。
+	## The only reasonable values for this parameter are 0 (no async I/O) and 1 (always do async I/O).
+	## 此参数唯一合理的值是 0（无异步 I/O）和 1（始终执行异步 I/O）。
+	## (1/0)
+	aio read size = 0
+	#aio write size = 0
+
+	## If Samba has been built with asynchronous I/O support, Samba will not wait until write requests are finished before returning the result to the client for files listed in this parameter.
+	## 如果 Samba 已使用异步 I/O 支持构建，则 Samba 不会等到写入请求完成后才将结果返回给客户端，以获取此参数中列出的文件。
+	## Instead, Samba will immediately return that the write request has been finished successfully, no matter if the operation will succeed or not.
+	## 相反，无论操作是否成功，Samba 都会立即返回写请求已成功完成。
+	## This might speed up clients without aio support, but is really dangerous, because data could be lost and files could be damaged. 
+	## 这可能会在没有 aio 支持的情况下加速客户端，但确实很危险，因为数据可能会丢失，文件可能会损坏。
+	#aio write behind = /*.tmp/
+
+	## lower CPU useage if supported and aio is disabled (aio read size = 0 ; aio write size = 0)
+	## 如果支持并禁用 aio，则降低 CPU 使用率 (aio read size = 0 ; aio write size = 0)
+	## is this still broken? issue is from 2019 (NOTE: see https://bugzilla.samba.org/show_bug.cgi?id=14095 )
+	## 这还是坏了吗？问题来自 2019 年（注意：请参阅 https://bugzilla.samba.org/show_bug.cgi?id=14095 ）
+	## (no, yes)
+	use sendfile = yes
+
+	## samba will behave as previous versions of Samba would and will fail the lock request immediately if the lock range cannot be obtained.
+	## samba 将像以前版本的 Samba 一样运行，如果无法获得锁定范围，它将立即使锁定请求失败。
+	#blocking locks = No
+
+	## disable loading of all printcap printers by default (iprint, cups, lpstat)
+	## 默认禁用所有 printcap 打印机的加载（iprint、cups、lpstat）
+	load printers = No
+	printcap name = /dev/null
+
+	## Enabling this parameter will disable Samba's support for the SPOOLSS set of MS-RPC's.
+	## 启用此参数将禁用 Samba 对 MS-RPC 的 SPOOLSS 集的支持。
+	disable spoolss = yes
+
+	## This parameters controls how printer status information is interpreted on your system.
+	## 此参数控制打印机状态信息在系统上的解释方式。
+	## (BSD, AIX, LPRNG, PLP, SYSV, HPUX, QNX, SOFTQ)
+	printing = bsd
+
+	## Disable that nmbd is acting as a WINS server for unknow netbios names
+	## 禁用 nmbd 作为未知 netbios 名称的 WINS 服务器
+	#dns proxy = No
+
+	## win/unix user mapping backend
+	## win/unix 用户映射后端
+	#idmap config * : backend = tdb
+
+	## Allows the server name that is advertised through MDNS to be set to the hostname rather than the Samba NETBIOS name.
+	## 允许将通过 MDNS 通告的服务器名称设置为主机名，而不是 Samba NETBIOS 名称。
+	## This allows an administrator to make Samba registered MDNS records match the case of the hostname rather than being in all capitals.
+	## 这允许管理员使 Samba 注册的 MDNS 记录与主机名的大小写匹配，而不是全部大写。
+	## (netbios, mdns)
+	mdns name = mdns
+
+	## Clients that only support netbios won't be able to see your samba server when netbios support is disabled.
+	## 仅支持 netbios 的客户端在禁用 netbios 支持时将无法看到您的 samba 服务器。
+	#disable netbios = Yes
+
+	## Setting this value to no will cause nmbd never to become a local master browser.
+	## 将此值设置为 no 将导致 nmbd 永远不会成为本地主浏览器。
+	#local master = no
+
+	## (auto, yes) If this is set to yes, on startup, nmbd will force an election, and it will have a slight advantage in winning the election. It is recommended that this parameter is used in conjunction with domain master = yes, so that nmbd can guarantee becoming a domain master. 
+	##（自动，是）如果设置为是，在启动时，nmbd将强制进行选举，并且在赢得选举时会有一点优势。建议将此参数与domain master=yes结合使用，这样nmbd就可以保证成为域主机。
+	#preferred master = yes
+
+	## (445 139) Specifies which ports the server should listen on for SMB traffic.
+	## (445 139) 指定服务器应在哪些端口上侦听 SMB 流量。
+	## 139 is netbios/nmbd
+	#smb ports = 445 139 4455
+
+	## This is a list of files and directories that are neither visible nor accessible.
+	## 这是既不可见也不可访问的文件和目录的列表。
+	## Each entry in the list must be separated by a '/', which allows spaces to be included in the entry. '*' and '?' can be used to specify multiple files or directories as in DOS wildcards.
+	## 列表中的每个条目必须用“/”分隔，这允许在条目中包含空格。“*”和“？”可用于指定多个文件或目录，如在 DOS 通配符中一样。
+	veto files = /Thumbs.db/.DS_Store/._.DS_Store/.apdisk/
+
+	## If a directory that is to be deleted contains nothing but veto files this deletion will fail unless you also set the delete veto files parameter to yes.
+	## 如果要删除的目录只包含否决文件，则此删除将失败，除非您还将删除否决文件参数设置为 yes。
+	delete veto files = yes
+
+################ Filesystem and creation rules ################
+
+	## reported filesystem type (NTFS,Samba,FAT)
+	## 报告的文件系统类型(NTFS、Samba、FAT)
+	#fstype = FAT
+
+	## Allows a user who has write access to the file (by whatever means, including an ACL permission) to modify the permissions (including ACL) on it.
+	## 允许对文件具有写入访问权限(以任何方式，包括ACL权限)的用户修改其权限(包括ACL)。
+	#dos filemode = Yes
+
+	## file/dir creating rules
+	## 文件/目录创建规则
+	#create mask = 0666
+	#directory mask = 0777
+	#force group = root
+	#force user = root
+	#inherit owner = windows and unix
+
+################ Dynamic written config options ###############
+	## Windows 7 能正常访问，而部分 Windows 10 不能访问，老是弹出“拒绝访问”，用以下两行代码，或能解决
+        ## 或运行 `gpedit.msc`，打开本地组策略编辑器，Windows 设置 → 安全设置 → 本地策略  → 安全选项 → 网路安全:LAN管理器身份验证级别，选择仅发送NTLMv2响应
+	lanman auth = yes
+	ntlm auth = ntlmv1-permitted
+
+#[upload]
+#	path = /tmp/upload
+#	create mask = 0666
+#	directory mask = 0777
+#	read only = no
+#	guest ok = yes
+#	inherit owner = yes

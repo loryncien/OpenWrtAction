@@ -1,0 +1,11 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+# Revert root shell to ash if zsh is not available
+if grep -q '^root:.*:/usr/bin/zsh$' /etc/passwd && [ ! -x /usr/bin/zsh ]; then
+    # zsh is root shell, but zsh was not found or not executable: revert to default ash
+    [ -x /usr/bin/logger ] && /usr/bin/logger -s "Reverting root shell to ash, as zsh was not found on the system"
+    sed -i -- 's:/usr/bin/zsh:/bin/ash:g' /etc/passwd
+fi
+mkdir -p -m 777 /tmp/upload
+exit 0

@@ -1,0 +1,114 @@
+name: Build-passwall
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: 0 18 * * *
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Initialization Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          echo -e "Total CPU cores\t: $(nproc)"
+          cat /proc/cpuinfo | grep 'model name'
+          free -h
+          uname -a
+          [ -f /proc/version ] && cat /proc/version
+          [ -f /etc/issue.net ] && cat /etc/issue.net
+          [ -f /etc/issue ] && cat /etc/issue
+          ulimit -a
+
+      - name: Checkout code
+        uses: actions/checkout@main
+
+      - name: Check for updates
+        id: check_updates
+        run: |
+          LATEST_VERSION=$(curl -s "https://api.github.com/repos/loryncien/OpenWrt-Rpi/releases/tags/passwall" | grep "name.*app.*ipk" | awk -F '_' '{print $2}' | sort -r | head -n1 )
+          CURRENT_VERSION=$(curl -s https://raw.githubusercontent.com/xiaorouji/openwrt-passwall/luci/luci-app-passwall/Makefile | grep "PKG_VERSION" | awk -F= '{print $2}' )
+          if [ "$LATEST_VERSION" != "$CURRENT_VERSION" ]; then
+            echo "New version found. Building luci-app-passwall $CURRENT_VERSION ..."
+            echo "build=true" >> $GITHUB_OUTPUT
+          else
+            echo "No updates found. Exiting ..."
+            echo "build=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Download OpenWrt SDK
+        if: ${{ steps.check_updates.outputs.build == 'true' }}
+        run: |
+          sudo -E apt-get -qq update
+          sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+          
+          TAGNAME=$(curl -s "https://api.github.com/repos/loryncien/OpenWrt-Rpi/releases" | jq -r '.[] | select(.tag_name | startswith("lean")) | .tag_name' | sort -r | head -n1)
+          SDK_URL=$(curl -s https://api.github.com/repos/loryncien/OpenWrt-Rpi/releases/tags/$TAGNAME | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}')
+          wget -qO- $SDK_URL | tar -xJ
+          mv openwrt-sdk-* openwrt-sdk
+          cd openwrt-sdk
+          echo "OPENWRT_SDK_PATH=$PWD" >> $GITHUB_ENV
+          echo "OPENWRT_SDK_PATH=$(echo $PWD)" >> $GITHUB_OUTPUT
+
+      - name: Build luci-app-passwall
+        if: ${{ steps.check_updates.outputs.build == 'true' }}
+        id: build
+        run: |
+          cd $OPENWRT_SDK_PATH
+          ./scripts/feeds update -a && ./scripts/feeds install -a
+          git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall package/passwall
+          git clone --depth=1 -b luci https://github.com/xiaorouji/openwrt-passwall package/luci-app-passwall
+          
+          echo "CONFIG_PACKAGE_luci-app-passwall=m" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_Iptables_Transparent_Proxy is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_Nftables_Transparent_Proxy is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Hysteria is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_NaiveProxy is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Server is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Server is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_GO is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Geodata is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray_Plugin is not set" >> .config
+          
+          make defconfig
+          make package/luci-app-passwall/compile -j$(($(nproc))) V=s
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Generate Variables
+        if: steps.build.outputs.status == 'success' && !cancelled()
+        run: |
+          export PACKAGE_TARGET="$(find openwrt-sdk/bin/ | grep luci-app-passwall )"
+          export I18N_TARGET="$(find openwrt-sdk/bin/ | grep luci-i18n-passwall-zh-cn )"
+          echo "PACKAGE_TARGET=$PACKAGE_TARGET" >> $GITHUB_ENV
+          echo "PACKAGE_TARGET=$(echo $PACKAGE_TARGET)" >> $GITHUB_OUTPUT
+          echo "I18N_TARGET=$I18N_TARGET" >> $GITHUB_ENV
+          echo "I18N_TARGET=$(echo $I18N_TARGET)" >> $GITHUB_OUTPUT
+          echo "DATE=$(date +"%Y.%m.%d %H:%M")" >> $GITHUB_ENV
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Upload firmware to release
+        uses: ncipollo/release-action@v1.12.0
+        if: steps.build.outputs.status == 'success' && !cancelled()
+        with:
+          name: luci-app-passwall
+          allowUpdates: true
+          replacesArtifacts: true
+          tag: passwall
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: ${{ env.PACKAGE_TARGET }},${{ env.I18N_TARGET }}
+          body: |
+            ${{ env.DATE }}
