@@ -11,9 +11,9 @@ Sysinfo() {
 	}
 	local Firmwaree="Frame"
 	[ ! -e /etc/openwrt_info ] && {
-            local Firmwaree="Frame"
-            local Luci_Revision=${DISTRIB_REVISION}
-            local Luci_Release=${DISTRIB_RELEASE}
+    local Firmwaree="Frame"
+    local Luci_Revision=${DISTRIB_REVISION}
+    local Luci_Release=${DISTRIB_RELEASE}
 	}
 	local Cpu_model=$(cat /proc/cpuinfo | grep name | cut -f2 -d: | sort | uniq | sed 's/^[ \t]*//g;s/[ ][ ]*/ /g')
 	local Cpu_cores=$(cat /proc/cpuinfo | grep cores | cut -f2 -d: | sort | uniq | sed 's/^[ \t]*//g')
