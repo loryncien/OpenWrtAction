@@ -215,7 +215,7 @@ jobs:
   job_build:
     needs: [Toolchain]
     runs-on: ubuntu-22.04
-    name: Build-OpenWrt-x86_64-${{ env.KERNEL_PATCHVER }}-${{ matrix.config }}
+    name: Build-OpenWrt-x86_64-${{ matrix.config }}
     strategy:
       fail-fast: false
       matrix:
