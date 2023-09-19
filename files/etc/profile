@@ -23,11 +23,11 @@ Sysinfo() {
 	local IP_Address=`ip -4 a | egrep "br-lan" | grep "inet" | awk '{print $2}'`
 	local CoreMark=$([ -f /etc/bench.log ] && egrep -o "[0-9]+" /etc/bench.log | awk 'NR==1')
 	local Startup=$(awk '{a=$1/86400;b=($1%86400)/3600;c=($1%3600)/60;d=($1%60)} {printf("%d Days %d Hours %d Minutes\n",a,b,c,d)}' /proc/uptime)
-	local Mem_sum=$(Free | grep Mem | awk '{a=$2/1024} {printf("%dMB\n",a)}')
-	local Mem_Free=$(Free | grep Mem | awk '{a=$7/1024} {printf("%dMB\n",a)}')
-	local Overlay_sum="$(df -h | grep ":/overlay" | awk '{print $2}' | awk 'NR==1')"
+	local Mem_Sum=$(free | grep Mem | awk '{a=$2/1024} {printf("%dMB\n",a)}')
+	local Mem_Free=$(free | grep Mem | awk '{a=$7/1024} {printf("%dMB\n",a)}')
+	local Overlay_Sum="$(df -h | grep ":/overlay" | awk '{print $2}' | awk 'NR==1')"
 	local Overlay_Free="$(df -h | grep ":/overlay" | awk '{print $4}' | awk 'NR==1')"
-	local Tmp_sum="$(df -h | grep "/tmp" | awk '{print $2}' | awk 'NR==1')"
+	local Tmp_Sum="$(df -h | grep "/tmp" | awk '{print $2}' | awk 'NR==1')"
 	local Tmp_Free="$(df -h | grep "/tmp" | awk '{print $4}' | awk 'NR==1')"
 	local TEMP=$(sensors 2>/dev/null | grep 'Core 0' | awk '{print $3}')
 	local KERNELL="$(egrep -o "[0-9]+\.[0-9]+\.[0-9]+" /usr/lib/opkg/info/kernel.control)"
