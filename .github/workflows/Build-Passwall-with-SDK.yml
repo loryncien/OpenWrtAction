@@ -51,6 +51,7 @@ jobs:
           echo "## :mega:Update content" >> release.txt
           echo "### Passwall Info" >> release.txt
           echo "**:minidisc: Passwall Version: ${{steps.check_version.outputs.latest_version}}**" >> release.txt
+          echo "**:gear: OpenWrt SDK Version: [Lean's LEDE source](https://github.com/coolsnowwolf/lede)**" >> release.txt
           touch release.txt
 
       - name: Generate new tag & release
@@ -276,7 +277,7 @@ jobs:
           echo "## :mega:Update content" >> release.txt
           echo "### Passwall Info" >> release.txt
           echo "**:minidisc: Passwall Version: ${{needs.job_check.outputs.passwall_version}}**" >> release.txt
-          echo "**:gear: OpenWrt SDK Version: 23.05-rc3**" >> release.txt
+          echo "**:gear: OpenWrt SDK Version: [Lean's LEDE source](https://github.com/coolsnowwolf/lede)**" >> release.txt
 
           echo "### Packages Version" >> release.txt
           echo "**package name**|**package version**" >> release.txt
@@ -300,6 +301,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: passwall-${{needs.job_check.outputs.passwall_version}}
+          tag_name: passwall_${{needs.job_check.outputs.passwall_version}}
           body_path: ${{ env.FIRMWARE }}/release.txt
           files: ${{ env.FIRMWARE }}/upload/*
