@@ -168,14 +168,14 @@ jobs:
     if: needs.job_check.outputs.has_update == 'true'
     needs: job_check
     runs-on: ubuntu-latest
-    name: build (${{ matrix.platform }})
+    name: Build (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: x86_64
             # url_sdk: https://downloads.openwrt.org/releases/23.05.0-rc3/targets/x86/64/openwrt-sdk-23.05.0-rc3-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-            url_sdk: ${{needs.job_build_passwall.outputs.url_sdk}}
+            url_sdk: $(curl -s https://api.github.com/repos/${{ github.repository }}/releases | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}' | head -n1)
 
     steps:
       - name: Initialization ${{ matrix.platform }} compile environment
