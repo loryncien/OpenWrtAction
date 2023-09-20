@@ -11,18 +11,13 @@ on:
         description: 'SSH connection to Actions'
         required: false
         default: 'false'
-  # schedule:
-  #  - cron: 0 18 * * *
-  push:
-    branches:
-      - 'main'
-    paths:
-      - 'luci-app-passwall/Makefile'
+  schedule:
+   - cron: 0 18 * * *
+
 env:
   TZ: Asia/Shanghai
   passwall: xiaorouji/openwrt-passwall
   packages: xiaorouji/openwrt-passwall-packages
-
 
 jobs:
   job_check:
@@ -33,11 +28,7 @@ jobs:
       has_update: ${{ steps.check_version.outputs.has_update }}
     steps:
       - name: Checkout
-        uses: actions/checkout@main
-        with:
-          repository: xiaorouji/openwrt-passwall
-          fetch-depth: 0
-          ref: 'main'
+        uses: actions/checkout@v4
 
       - name: Check version
         id: check_version
@@ -60,7 +51,6 @@ jobs:
           echo "## :mega:Update content" >> release.txt
           echo "### Passwall Info" >> release.txt
           echo "**:minidisc: Passwall Version: ${{steps.check_version.outputs.latest_version}}**" >> release.txt
-          echo "**:gear: OpenWrt SDK Version: 23.05-rc3**" >> release.txt
           touch release.txt
 
       - name: Generate new tag & release
@@ -74,12 +64,12 @@ jobs:
 
 
   job_build_passwall:
-    name: Build passwall
+    name: Build luci-app-passwall
     needs: job_check
     if: needs.job_check.outputs.has_update == 'true'
     runs-on: ubuntu-latest
     outputs:
-      url_sdk: ${{ steps.initialization_env.outputs.SDK_URL }}
+      url_sdk: ${{ steps.sdk_env.outputs.SDK_URL }}
     steps:
       - name: Install packages
         run: |
@@ -94,22 +84,23 @@ jobs:
         uses: actions/cache@v3
         with:
           path: sdk
-          key: openwrt-sdk-lean-x86_64
+          key: openwrt-sdk-x86-64_gcc-11.3.0-lean
 
       - name: Initialization environment
-        id: initialization_env
+        id: sdk_env
         if: steps.cache-sdk.outputs.cache-hit != 'true'
         run: |
-          TAG_NAME=$(curl -s "https://api.github.com/repos/${{ github.repository }}/releases" | jq -r '.[] | select(.tag_name | startswith("lean")) | .tag_name' | sort -r | head -n1)
-          SDK_URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}')
+          # TAG_NAME=$(curl -s "https://api.github.com/repos/${{ github.repository }}/releases" | jq -r '.[] | select(.tag_name | startswith("lean")) | .tag_name' | sort -r | head -n1)
+          # SDK_URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}')
+          SDK_URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}' | head -n1)
           echo "SDK_URL=echo $SDK_URL" >> $GITHUB_OUTPUT
           echo "SDK_URL=echo $SDK_URL" >> $GITHUB_ENV
-
+          
           wget -qO- $SDK_URL | tar -xJ
           mv openwrt-sdk-* sdk
           cd sdk
-          # echo "src-git passwall_packages https://github.com/${{ env.packages }}.git;main" >> feeds.conf
-          # echo "src-git passwall https://github.com/${{ env.passwall }}.git;main" >> feeds.conf
+          #echo "src-git passwall_packages https://github.com/${{ env.packages }}.git;main" >> feeds.conf
+          #echo "src-git passwall https://github.com/${{ env.passwall }}.git;main" >> feeds.conf
           ./scripts/feeds update -a
           echo "CONFIG_PACKAGE_luci-app-passwall=m" > .config
           ./scripts/feeds install -d n luci-app-passwall
@@ -184,8 +175,7 @@ jobs:
         include:
           - platform: x86_64
             # url_sdk: https://downloads.openwrt.org/releases/23.05.0-rc3/targets/x86/64/openwrt-sdk-23.05.0-rc3-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-            # url_sdk: ${{needs.job_build_passwall.outputs.url_sdk}}
-            url_sdk: https://github.com/${{ github.repository }}/releases/download/toolchain/openwrt-sdk-x86-64_gcc-11.3.0_musl.Linux-x86_64.tar.xz
+            url_sdk: ${{needs.job_build_passwall.outputs.url_sdk}}
 
     steps:
       - name: Initialization ${{ matrix.platform }} compile environment
