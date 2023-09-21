@@ -119,28 +119,27 @@ jobs:
           echo "CONFIG_AUTOREMOVE=n" >> .config
           echo "CONFIG_LUCI_LANG_zh_Hans=y" >> .config
           echo "CONFIG_PACKAGE_luci-app-passwall=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_Iptables_Transparent_Proxy=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_Nftables_Transparent_Proxy=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Brook=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ChinaDNS_NG=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Hysteria=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_NaiveProxy=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Server=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Server=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_GO=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_tuic_client=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Geodata=n" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=m" >> .config
-          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray_Plugin=n" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_Iptables_Transparent_Proxy=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_Nftables_Transparent_Proxy is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Brook is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Hysteria is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_NaiveProxy is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Server is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Server is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_GO is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_tuic_client is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Geodata is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y  " >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray_Plugin is not set" >> .config
           make defconfig
 
       - name: Compile passwall
