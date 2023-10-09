@@ -42,6 +42,11 @@ find ../ | grep Makefile | grep mosdns | xargs rm -f
 git clone --depth=1 -b v5 https://github.com/sbwml/luci-app-mosdns mosdns
 git clone --depth=1 https://github.com/sbwml/v2ray-geodata.git v2ray-geodata
 
+echo "Add luci-app-smartdns"
+find .. -maxdepth 4 -iname "*smartdns" -type d | xargs rm -rf
+svn export -q https://github.com/kenzok8/small-package/trunk/smartdns
+svn export -q https://github.com/kenzok8/small-package/trunk/luci-app-smartdns
+
 echo "Add luci-app-netdata"
 #find .. -maxdepth 4 -iname "*netdata" -type d | xargs rm -rf
 rm -rf ../feeds/luci/applications/luci-app-netdata
