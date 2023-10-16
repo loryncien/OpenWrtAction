@@ -31,9 +31,8 @@ delete dhcp.lan.ndp
 delete network.globals.ula_prefix
 delete network.wan6
 
-# Disable IPV6 DNS
+# Enable rebind protection. Filtered DNS service responses from blocked domains are 0.0.0.0 which causes dnsmasq to fill the system log with possible DNS-rebind attack detected messages.
 set dhcp.@dnsmasq[0].rebind_protection='1'
-set dhcp.@dnsmasq[0].rebind_localhost='1'
 
 # Disable Turboacc for control
 set turboacc.config.sfe_flow='0'
