@@ -21,25 +21,23 @@ dns:
   ratelimit_whitelist: []
   refuse_any: false
   upstream_dns:
+    - '# Ali DNS'
     - h3://223.5.5.5/dns-query
-    - '#h3://unfiltered.adguard-dns.com/dns-query'
     - '# CloudFlare DNS'
-    - '#h3://1.1.1.1/dns-query'
-    - '# 谷歌 DNS'
-    - h3://[2001:4860:4860::8888]/dns-query
-    - quic://dns.east.comss.one
-    - '# 360 安全 DNS'
-    - tls://dot.360.cn
-    - '# DNSPod 公共 DNS'
+    - '#h3://1.1.1.2/dns-query'
+    - '#tls://1dot1dot1dot1.cloudflare-dns.com'
+    - '# Google DNS'
+    - '#h3://[2001:4860:4860::8888]/dns-query'
+    - '# DNSPod DNS (doh.pub)'
+    - https://1.12.12.12/dns-query
     - tls://dot.pub
+    - '# 360 DNS'
+    - https://doh.360.cn/dns-query
+    - tls://dot.360.cn
+    - 114.114.114.114
   upstream_dns_file: ""
   bootstrap_dns:
-    - 183.221.253.100
-    - 211.137.96.205
-    - 2409:8062:2000:1::1
     - 223.5.5.5
-    - 9.9.9.10
-    - 149.112.112.10
   fallback_dns: []
   all_servers: true
   fastest_addr: false
@@ -115,54 +113,33 @@ filters:
     url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_29.txt
     name: 'CHN: AdRules DNS List'
     id: 1694475195
-  - enabled: true
+  - enabled: false
     url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_21.txt
     name: 'CHN: anti-AD'
     id: 1694475196
-  - enabled: false
-    url: http://sub.adtchrome.com/adt-chinalist-easylist.txt
-    name: 广告终结者使用的拦截规则，基于ChinaList+EasyList修正维护
+  - enabled: true
+    url: https://filters.adtidy.org/extension/ublock/filters/220.txt
+    name: "CJX's Annoyance List: EasyList China+EasyList & EasyPrivacy 的补充"
     id: 139789181
   - enabled: false
-    url: https://easylist-downloads.adblockplus.org/easylist.txt
-    name: EasyList-去除国际网页中大多数广告，包括不需要的框架、图像和对象
-    id: 139789112
-  - enabled: false
-    url: https://easylist-downloads.adblockplus.org/easylistchina.txt
-    name: EasyList China-EasyList针对国内的补充规则
-    id: 139789121
+    url: http://sub.adtchrome.com/adt-chinalist-easylist.txt
+    name: "广告终结者使用的拦截规则，基于 ChinaList+EasyList 修正维护"
+    id: 139789181
   - enabled: true
     url: https://filters.adtidy.org/extension/ublock/filters/11.txt
     name: AdGuard Mobile Ads filter
     id: 139789172
-  - enabled: false
-    url: https://anti-ad.net/adguard.txt
-    name: anti-AD命中率最高列表
-    id: 139789122
 whitelist_filters: []
 user_rules:
   - '@@||taobao.com^$important'
   - '@@||tmall.com^$important'
   - '@@||jd.com^important'
-  - '@@||flyme.cn^$important'
-  - '@@||meizu.com^$important'
   - '@@||wl.jd.com^$important'
-  - '@@||flydigi.com^'
-  - '@@||pv.sohu.com^$important'
-  - /googleads.$~script,domain=~googleads.github.io
-  - /pagead/lvz?
-  - '||google.com/pagead/'
-  - '||static.doubleclick.net^$domain=youtube.com'
-  - '||youtube.com/get_midroll_'
-  - '||5hz.org^'
-  - '@@||000714.xyz^'
-  - '@@||blueskyxn.com^'
-  - '||topnewsfeeds.net^'
-  - '||nbryb.com^'
-  - '||superbdolly.com^'
-  - '||salutationcheerlessdemote.com^'
-  - '||buildingdoodlesquare.com^'
-  - '||colonistnobilityheroic.com^'
+  - '# 解决B站垃圾CDN导致卡顿'
+  - '||*pcdn*.biliapi.net^$important'
+  - '||mcdn.bilivideo.cn^$important'
+  - '||szbdyd.com^$important'
+  - '@@||cn-*.bilivideo.com'
 dhcp:
   enabled: false
   interface_name: ""
