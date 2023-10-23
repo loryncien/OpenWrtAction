@@ -105,6 +105,8 @@ alias reload='source /etc/profile'
 alias shutdown='sync && poweroff'
 alias cl='clear'
 alias top='top -d 1'
+alias ports='netstat -tulpn'
+alias portused='netstat -tulpn | grep LISTEN'
 alias fdir='find . -type d -name'
 alias ff='find . -type f -name'
 ffrm() {
