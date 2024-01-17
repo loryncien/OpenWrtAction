@@ -19,6 +19,14 @@ on:
           - 6.1
           - 5.15
           - 5.4
+      packages:
+        description: '插件数量'
+        required: true
+        default: all
+        type: choice
+        options:
+          - lite
+          - plus
 
   # schedule:
   #   - cron: 0 18 * * *
@@ -219,7 +227,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [lite, plus]
+        config: [${{ github.event.inputs.packages }}]
 
     steps:
       - name: Restore Variables
