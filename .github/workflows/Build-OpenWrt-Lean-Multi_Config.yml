@@ -22,11 +22,12 @@ on:
       packages:
         description: '插件数量'
         required: true
-        default: all
+        default: 'lite, plus'
         type: choice
         options:
           - lite
           - plus
+          - lite, plus
 
   # schedule:
   #   - cron: 0 18 * * *
