@@ -3,18 +3,99 @@
 echo "========================="
 echo "开始 common 配置……"
 
-## 添加 package
-pushd package
-#echo "Add Passwall SSRP"
-#git clone --depth=1 https://github.com/fw876/helloworld.git
-#git clone --depth=1 -b main https://github.com/xiaorouji/openwrt-passwall-packages.git passwall_packages
-#git clone --depth=1 -b main https://github.com/xiaorouji/openwrt-passwall.git luci-app-passwall
+# Git稀疏克隆，只克隆指定目录到本地
+function git_sparse_clone() {
+  branch="$1" repourl="$2" && shift 2
+  git clone --depth=1 -b $branch --single-branch --filter=blob:none --sparse $repourl
+  repodir=$(echo $repourl | awk -F '/' '{print $(NF)}')
+  cd $repodir && git sparse-checkout set $@
+  mv -f $@ ../package
+  cd .. && rm -rf $repodir
+}
 
-svn export -q https://github.com/vernesong/OpenClash/trunk/luci-app-openclash
+echo "Add 科学上网插件"
+git clone --depth=1 -b main https://github.com/fw876/helloworld package/luci-app-ssr-plus
+git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages package/passwall_packages
+git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall package/luci-app-passwall
+git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2 package/luci-app-passwall2
+git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
+
+echo "Add luci-app-adguardhome"
+find . -maxdepth 4 -iname "luci-app-adguardhome" -type d | xargs rm -rf
+git_sparse_clone main https://github.com/kenzok8/small-package adguardhome
+git_sparse_clone main https://github.com/sirpdboy/sirpdboy-package luci-app-adguardhome
+
+echo "Add luci-app-mosdns"
+# drop mosdns and v2ray-geodata packages that come with the source
+find . -maxdepth 4 -iname "*mosdns" -type d | xargs rm -rf
+find . | grep Makefile | grep v2ray-geodata | xargs rm -f
+find . | grep Makefile | grep mosdns | xargs rm -f
+git clone --depth=1 -b v5 https://github.com/sbwml/luci-app-mosdns package/mosdns
+git clone --depth=1 https://github.com/sbwml/v2ray-geodata.git package/v2ray-geodata
+
+echo "Add luci-app-smartdns"
+find .. -maxdepth 4 -iname "*smartdns" -type d | xargs rm -rf
+git_sparse_clone main https://github.com/kenzok8/small-package smartdns
+git_sparse_clone main https://github.com/kenzok8/small-package luci-app-smartdns
+
+echo "Add luci-app-netdata"
+# find . -maxdepth 4 -iname "*netdata" -type d | xargs rm -rf
+rm -rf feeds/luci/applications/luci-app-netdata
+git clone --depth=1 https://github.com/sirpdboy/luci-app-netdata package/luci-app-netdata
+ln -s package/luci-app-netdata/po/zh-cn package/luci-app-netdata/po/zh_Hans
+
+echo "Add luci-app-ddns-go"
+git clone --depth=1 https://github.com/sirpdboy/luci-app-ddns-go.git package/luci-app-ddns-go
+
+echo "Add luci-app-alist"
+find . -maxdepth 4 -iname "*alist" -type d | xargs rm -rf
+rm -rf feeds/packages/lang/golang
+git clone --depth=1 https://github.com/sbwml/packages_lang_golang -b 20.x feeds/packages/lang/golang
+git clone --depth=1 https://github.com/sbwml/luci-app-alist.git package/luci-app-alist
+
+echo "Add luci-app-ddnsto linkease istorex"
+find . -maxdepth 4 -iname "*ddnsto" -type d | xargs rm -rf
+git clone --depth=1 -b master https://github.com/linkease/nas-packages.git package/
+git clone --depth=1 -b main https://github.com/linkease/nas-packages-luci.git package/
+
+echo "Add luci-app-eqos"
+rm -rf feeds/luci/applications/luci-app-eqos
+git_sparse_clone main https://github.com/kenzok8/jell luci-app-eqos
+
+echo "Add luci-app-eqosplus"
+git clone --depth=1 https://github.com/sirpdboy/luci-app-eqosplus package/luci-app-eqosplus
+sed -i '/"Control"/d' luci-app-eqosplus/luasrc/controller/eqosplus.lua
+sed -i 's/10/99/g' luci-app-eqosplus/luasrc/controller/eqosplus.lua
+sed -i 's/\"control\"/\"network\"/g' `grep "control" -rl ./luci-app-eqosplus`
+
+echo "Add OpenAppFilter"
+git clone --depth=1 https://github.com/destan19/OpenAppFilter.git
+
+echo "Add luci-app-autotimeset"
+find . -maxdepth 4 -iname "*autotimeset" -type d | xargs rm -rf
+git clone --depth=1 https://github.com/sirpdboy/luci-app-autotimeset.git package/luci-app-autotimeset
+
+echo "Add aliyundrive-webdav"
+find . -maxdepth 4 -iname "*aliyundrive-webdav" -type d | xargs rm -rf
+git_sparse_clone main https://github.com/messense/aliyundrive-webdav openwrt
+
+echo "Add luci-app-bandwidthd"
+git clone --depth=1 https://github.com/AlexZhuo/luci-app-bandwidthd.git package/luci-app-bandwidthd
+
+# Add Theme
+echo "Add Themeluci-theme-design theme"
+rm -rf ../feeds/luci/themes/luci-theme-design
+git clone --depth=1 -b $(echo $SOURCE_URL | grep -iq "lede" && echo "main" || echo "js") https://github.com/gngpp/luci-theme-design.git
+git clone --depth=1 https://github.com/gngpp/luci-app-design-config.git
+
+echo "Add Themejerrykuku Argon theme"
+rm -rf ../feeds/luci/themes/luci-theme-argon
+git clone --depth=1 -b $(echo $SOURCE_URL | grep -iq "lede" && echo "18.06" || echo "master") https://github.com/jerrykuku/luci-theme-argon.git
+git clone --depth=1 -b $(echo $SOURCE_URL | grep -iq "lede" && echo "18.06" || echo "master") https://github.com/jerrykuku/luci-app-argon-config.git
 
 echo "Add luci-app-unblockneteasemusic core"
-if [ -d "../feeds/luci/applications/luci-app-unblockneteasemusic" ]; then
-  pushd ../feeds/luci/applications/luci-app-unblockneteasemusic/root/usr/share/unblockneteasemusic
+if [ -d "feeds/luci/applications/luci-app-unblockneteasemusic" ]; then
+  pushd feeds/luci/applications/luci-app-unblockneteasemusic/root/usr/share/unblockneteasemusic
   # uclient-fetch Use IPv4 only
   sed -i 's/uclient-fetch/uclient-fetch -4/g' update.sh
   # unblockneteasemusic core
@@ -29,97 +110,10 @@ if [ -d "../feeds/luci/applications/luci-app-unblockneteasemusic" ]; then
   popd
 fi
 
-echo "Add luci-app-adguardhome"
-find .. -maxdepth 4 -iname "luci-app-adguardhome" -type d | xargs rm -rf
-svn export -q https://github.com/kenzok8/small-package/trunk/adguardhome
-svn export -q https://github.com/sirpdboy/sirpdboy-package/trunk/luci-app-adguardhome
-
-echo "Add luci-app-mosdns"
-# drop mosdns and v2ray-geodata packages that come with the source
-find .. -maxdepth 4 -iname "*mosdns" -type d | xargs rm -rf
-find ../ | grep Makefile | grep v2ray-geodata | xargs rm -f
-find ../ | grep Makefile | grep mosdns | xargs rm -f
-git clone --depth=1 -b v5 https://github.com/sbwml/luci-app-mosdns mosdns
-git clone --depth=1 https://github.com/sbwml/v2ray-geodata.git v2ray-geodata
-
-echo "Add luci-app-smartdns"
-find .. -maxdepth 4 -iname "*smartdns" -type d | xargs rm -rf
-svn export -q https://github.com/kenzok8/small-package/trunk/smartdns
-svn export -q https://github.com/kenzok8/small-package/trunk/luci-app-smartdns
-
-echo "Add luci-app-netdata"
-#find .. -maxdepth 4 -iname "*netdata" -type d | xargs rm -rf
-rm -rf ../feeds/luci/applications/luci-app-netdata
-git clone --depth=1 https://github.com/sirpdboy/luci-app-netdata
-ln -s luci-app-netdata/po/zh-cn luci-app-netdata/po/zh_Hans
-
-echo "Add luci-app-ddns-go"
-git clone --depth=1 https://github.com/sirpdboy/luci-app-ddns-go.git
-
-echo "Add luci-app-alist"
-find .. -maxdepth 4 -iname "*alist" -type d | xargs rm -rf
-rm -rf ../feeds/packages/lang/golang
-git clone --depth=1 https://github.com/sbwml/packages_lang_golang -b 20.x ../feeds/packages/lang/golang
-git clone --depth=1 https://github.com/sbwml/luci-app-alist.git
-
-echo "Add luci-app-ddnsto linkease istorex"
-find .. -maxdepth 4 -iname "*ddnsto" -type d | xargs rm -rf
-git clone --depth=1 -b master https://github.com/linkease/nas-packages.git
-git clone --depth=1 -b main https://github.com/linkease/nas-packages-luci.git
-
-echo "Add luci-app-eqos"
-rm -rf ../feeds/luci/applications/luci-app-eqos
-svn export -q https://github.com/kenzok8/jell/trunk/luci-app-eqos
-
-echo "Add luci-app-eqosplus"
-git clone --depth=1 https://github.com/sirpdboy/luci-app-eqosplus
-sed -i '/"Control"/d' luci-app-eqosplus/luasrc/controller/eqosplus.lua
-sed -i 's/10/99/g' luci-app-eqosplus/luasrc/controller/eqosplus.lua
-sed -i 's/\"control\"/\"network\"/g' `grep "control" -rl ./luci-app-eqosplus`
-
-echo "Add OpenAppFilter"
-git clone --depth=1 https://github.com/destan19/OpenAppFilter.git
-
-echo "Add luci-app-parentcontrol"
-git clone --depth=1 https://github.com/sirpdboy/luci-app-parentcontrol.git
-
-#echo "Add luci-app-serverchan"
-#find .. -maxdepth 4 -iname "*serverchan" -type d | xargs rm -rf
-#find .. -maxdepth 4 -iname "*pushbot" -type d | xargs rm -rf
-#git clone --depth=1 https://github.com/tty228/luci-app-serverchan.git
-#git clone --depth=1 https://github.com/zzsj0928/luci-app-pushbot.git
-
-echo "Add luci-app-autotimeset"
-find . -maxdepth 4 -iname "*autotimeset" -type d | xargs rm -rf
-git clone --depth=1 https://github.com/sirpdboy/luci-app-autotimeset.git
-
-echo "Add aliyundrive-webdav"
-rm -rf ../feeds/luci/applications/luci-app-aliyundrive-webdav
-rm -rf ../feeds/packages/multimedia/aliyundrive-webdav
-svn export -q https://github.com/messense/aliyundrive-webdav/trunk/openwrt aliyundrive
-
-echo "Add luci-app-bandwidthd"
-git clone https://github.com/AlexZhuo/luci-app-bandwidthd.git
-
-# Add Theme
-echo "Add Themeluci-theme-design theme"
-rm -rf ../feeds/luci/themes/luci-theme-design
-git clone --depth=1 -b $(echo $SOURCE_URL | grep -iq "lede" && echo "main" || echo "js") https://github.com/gngpp/luci-theme-design.git
-git clone --depth=1 https://github.com/gngpp/luci-app-design-config.git
-
-echo "Add Themejerrykuku Argon theme"
-rm -rf ../feeds/luci/themes/luci-theme-argon
-git clone --depth=1 -b $(echo $SOURCE_URL | grep -iq "lede" && echo "18.06" || echo "master") https://github.com/jerrykuku/luci-theme-argon.git
-git clone --depth=1 -b $(echo $SOURCE_URL | grep -iq "lede" && echo "18.06" || echo "master") https://github.com/jerrykuku/luci-app-argon-config.git
-popd
-
 # 编译 po2lmo (如果有po2lmo可跳过)
 pushd package/luci-app-openclash/tools/po2lmo
 make && sudo make install
 popd
-
-# 修改插件名字
-# sed -i 's/"解除网易云音乐播放限制"/"网易云音乐解锁"/g' `grep "解除网易云音乐播放限制" -rl ./`
 
 # Modify default IP
 #sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generate
@@ -137,6 +131,9 @@ cp -f $GITHUB_WORKSPACE/data/banner package/base-files/files/etc/banner
 
 # samba解除root限制
 sed -i 's/invalid users = root/#&/g' feeds/packages/net/samba4/files/smb.conf.template
+
+./scripts/feeds update -a
+./scripts/feeds install -a
 
 echo "完成 common 配置完成……"
 echo "========================="
