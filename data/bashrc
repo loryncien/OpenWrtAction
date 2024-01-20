@@ -1,0 +1,2 @@
+# Note: opkg update && opkg install findutils findutils-find --force-reinstall
+[ -f ~/.fzf.bash ] && source ~/.fzf.bash
