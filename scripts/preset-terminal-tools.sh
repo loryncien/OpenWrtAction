@@ -24,12 +24,12 @@ curl -fLo ./.vim/autoload/plug.vim --create-dirs \
 
 ## Get .zshrc dotfile
 # cp $GITHUB_WORKSPACE/data/zsh/.zshrc .
-cp $GITHUB_WORKSPACE/data/.bashrc .
+cp $GITHUB_WORKSPACE/data/bashrc .bashrc
 
 ## Install fzf
 git clone --depth 1 https://github.com/junegunn/fzf.git ./.config/fzf
 .config/fzf/install --bin
-cp $GITHUB_WORKSPACE/data/.fzf.bash .
+cp $GITHUB_WORKSPACE/data/fzf.bash .fzf.bash
 echo '# Note: opkg update && opkg install findutils findutils-find --force-reinstall' >> .bashrc
 echo '[ -f ~/.fzf.bash ] && source ~/.fzf.bash' >> .bashrc
 
