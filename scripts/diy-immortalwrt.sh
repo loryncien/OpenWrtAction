@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# 移除要替换的包
-rm -rf feeds/luci/applications/luci-app-netdata
-
 # Git稀疏克隆，只克隆指定目录到本地
 function git_sparse_clone() {
   branch="$1" repourl="$2" && shift 2
@@ -15,8 +12,8 @@ function git_sparse_clone() {
 
 # 添加额外插件
 echo "Add luci-app-netdata"
-# find . -maxdepth 4 -iname "*netdata" -type d | xargs rm -rf
-rm -rf feeds/luci/applications/luci-app-netdata
+find . -maxdepth 4 -iname "*netdata" -type d | xargs rm -rf
+git_sparse_clone master https://github.com/coolsnowwolf/packages admin/netdata
 git clone --depth=1 https://github.com/sirpdboy/luci-app-netdata package/luci-app-netdata
 ln -s package/luci-app-netdata/po/zh-cn package/luci-app-netdata/po/zh_Hans
 
@@ -57,7 +54,7 @@ find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/PKG_SOURCE_U
 # 更改默认 Shell 为 zsh
 # sed -i 's/\/bin\/ash/\/usr\/bin\/zsh/g' package/base-files/files/etc/passwd
 
-# TTYD 免登录
+# TTYD 免登录, 但务必修改默认端口
 # sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
 # 修改欢迎 banner
@@ -65,10 +62,6 @@ cp -f $GITHUB_WORKSPACE/data/banner package/base-files/files/etc/banner
 
 # samba解除root限制
 sed -i 's/invalid users = root/#&/g' feeds/packages/net/samba4/files/smb.conf.template
-
-# 添加 poweroff 按钮
-curl -fsSL https://raw.githubusercontent.com/sirpdboy/other/master/patch/poweroff/poweroff.htm > feeds/luci/modules/luci-mod-admin-full/luasrc/view/admin_system/poweroff.htm
-curl -fsSL https://raw.githubusercontent.com/sirpdboy/other/master/patch/poweroff/system.lua > feeds/luci/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
 
 ./scripts/feeds update -a
 ./scripts/feeds install -a
