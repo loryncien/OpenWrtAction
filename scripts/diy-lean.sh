@@ -51,15 +51,6 @@ echo "Add luci-app-alist"
 find ./ -maxdepth 4 -iname "*alist" -type d | xargs rm -rf
 git clone --depth=1 https://github.com/sbwml/luci-app-alist.git package/luci-app-alist
 
-echo "Add luci-app-ddnsto linkease istorex"
-find ./ -maxdepth 4 -iname "*ddnsto" -type d | xargs rm -rf
-git clone --depth=1 -b master https://github.com/linkease/nas-packages.git package/nas
-git clone --depth=1 -b main https://github.com/linkease/nas-packages-luci.git package/nas-luci
-
-echo "Add luci-app-eqos"
-rm -rf feeds/luci/applications/luci-app-eqos
-git_sparse_clone main https://github.com/kenzok8/jell package/luci-app-eqos
-
 echo "Add luci-app-eqosplus"
 git clone --depth=1 https://github.com/sirpdboy/luci-app-eqosplus package/luci-app-eqosplus
 sed -i '/"Control"/d' luci-app-eqosplus/luasrc/controller/eqosplus.lua
@@ -90,7 +81,6 @@ echo "Add Themejerrykuku Argon theme"
 rm -rf ./feeds/luci/themes/luci-theme-argon
 git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git
 git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-app-argon-config.git
-
 
 echo "Add luci-app-unblockneteasemusic core"
 # luci-app-unblockneteasemusic
