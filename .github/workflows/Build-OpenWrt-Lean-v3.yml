@@ -75,12 +75,6 @@ jobs:
         temp-reserve-mb: 100    # default: '100'
         remove-dotnet: 'true'
 
-    - name: Check Space Usage
-      if: (!cancelled())
-      run: |
-        echo "Free space:"
-        df -hT
-
     - name: Checkout
       uses: actions/checkout@main
 
@@ -150,6 +144,7 @@ jobs:
         echo "status=success" >> $GITHUB_OUTPUT
         echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "SDATE=$(date +"%Y%m%d")" >> $GITHUB_ENV
+        echo "DEFAULT_IP=$(cat package/base-files/files/bin/config_generate | grep 'lan) ipad=' | awk -F '"' '{print $2}')" >> $GITHUB_ENV
 
     - name: Check Space Usage
       if: (!cancelled())
@@ -193,8 +188,8 @@ jobs:
         body: |
           ### 📒 固件信息
           - 💻 平台架构: x86_64
-          - ⚽ 固件源码: ${{ env.REPO_URL }}
-          - 💝 源码分支: ${{ env.REPO_BRANCH }}
+          - ⚽ 固件源码: https://github.com/coolsnowwolf/lede
+          - 💝 源码分支: master
           - 🚀 内核版本: ${{ env.KERNEL }}
           - 🌐 默认地址: ${{ env.DEFAULT_IP }}
           - 🔑 默认密码: 无 或 password
