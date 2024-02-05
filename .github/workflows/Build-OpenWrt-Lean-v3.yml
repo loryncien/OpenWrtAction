@@ -1,0 +1,211 @@
+name: OpenWrt Lean X64 (v3)
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      KERNEL_PATCHVER:
+        description: '内核补丁版本(可选)'
+        required: false
+        type: choice
+        options:
+          - '6.1'
+          - '5.15'
+          - '5.4'
+      Tempoary_CONFIG:
+        description: '配置文件'
+        default: 'lite'
+        type: choice
+        options:
+          - 'lite'
+          - 'plus'
+  # schedule:
+  #   - cron: 0 19 * * *
+
+env:
+  CACHE_TOOLCHAIN: true
+  UPLOAD_BIN_DIR: false
+  UPLOAD_RELEASE: true
+  SEND_BARK_MSG: true
+  TZ: Asia/Shanghai
+  CLASH_KERNEL: amd64
+  KERNEL_PATCHVER: ${{ github.event.inputs.KERNEL_PATCHVER }}
+  Tempoary_CONFIG: ${{ github.event.inputs.Tempoary_CONFIG }}
+
+jobs:
+  Build:
+    runs-on: ubuntu-22.04
+    if: github.event.repository.owner.id == github.event.sender.id
+
+    steps:
+    - name: Check Server Performance
+      run: |
+        echo "警告⚠"
+        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
+        echo -e "已知CPU型号(降序): 7763，8370C，8272CL，8171M，E5-2673\n"
+        echo "--------------------------CPU信息--------------------------"
+        echo "CPU物理数量: $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo "CPU核心数量: $(nproc)"
+        echo -e "CPU型号信息:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
+        echo "--------------------------内存信息--------------------------"
+        echo "已安装内存详细信息:"
+        echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
+        echo "--------------------------硬盘信息--------------------------"
+        echo "硬盘数量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+
+    - name: Initialization Environment
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install build-essential clang flex g++ gawk gcc-multilib gettext \
+        git libncurses5-dev libssl-dev python3-distutils python3-pyelftools python3-setuptools \
+        libpython3-dev rsync unzip zlib1g-dev swig aria2 jq subversion qemu-utils ccache rename \
+        libelf-dev device-tree-compiler libgnutls28-dev coccinelle libgmp3-dev libmpc-dev libfuse-dev
+        sudo -E apt-get -qq purge azure-cli ghc* zulu* llvm* firefox powershell openjdk* dotnet* google* mysql* php* android*
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "$TZ"
+
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Clone Source Code
+      env: 
+        REPO_URL: https://github.com/coolsnowwolf/lede
+        REPO_BRANCH: master
+      run: |
+        git clone --depth 1 $REPO_URL -b $REPO_BRANCH openwrt
+        cd openwrt
+        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+        # sed -i '$a src-git smpackage https://github.com/kenzok8/small-package' feeds.conf.default
+        sed -i '$a src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
+        sed -i '$a src-git small https://github.com/kenzok8/small' feeds.conf.default
+
+    - name: Update feeds
+      run: |
+        cd $OPENWRT_PATH
+        ./scripts/feeds update -a
+
+    - name: Load Custom Configuration
+      env:
+        CONFIG_FILE: config/lean-x86_64-${{ github.event.inputs.Tempoary_CONFIG }}.config
+        DIY_SCRIPT: scripts/customize.sh
+      run: |
+        [ -e files ] && mv files $OPENWRT_PATH/files
+        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
+        chmod +x $GITHUB_WORKSPACE/scripts/*.sh
+        cd $OPENWRT_PATH
+        $GITHUB_WORKSPACE/$DIY_SCRIPT
+        # $GITHUB_WORKSPACE/scripts/preset-clash-core.sh $CLASH_KERNEL
+        $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
+        [ -n "$KERNEL_PATCHVER" ] && sed -i "/KERNEL_PATCHVER/c KERNEL_PATCHVER:=$KERNEL_PATCHVER" target/linux/x86/Makefile
+        ./scripts/feeds update -a && ./scripts/feeds install -a
+
+    - name: Download DL Package
+      working-directory: ./openwrt
+      run: |
+        make defconfig
+        make download -j$(($(nproc)+1))
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Cache
+      if: env.CACHE_TOOLCHAIN == 'true'
+      uses: stupidloud/cachewrtbuild@main
+      with:
+        #是否一并缓存.ccache目录，如果你启用了ccache。这是唯一的常用参数，其他三个用于除错，一般不需要调整
+        ccache: 'true'
+        #是否缓存工具链目录 
+        toolchain: 'true' 
+        #是否跳过工具链编译
+        skip: 'true'
+        #清空缓存          
+        clean: 'false'
+        mixkey: lean-x86_64
+        prefix: ${{ env.OPENWRT_PATH }}
+
+    - name: Compile Firmware
+      id: compile
+      run: |
+        cd $OPENWRT_PATH
+        mkdir -p files/etc/uci-defaults
+        cp $GITHUB_WORKSPACE/scripts/init-settings.sh files/etc/uci-defaults/99-init-settings
+        echo -e "$(($(nproc)+1)) thread compile"
+        make -j$(($(nproc)+1)) || make -j1 V=s
+
+        echo "status=success" >> $GITHUB_OUTPUT
+        echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+        echo "SDATE=$(date +"%Y%m%d")" >> $GITHUB_ENV
+
+    - name: Check Space Usage
+      if: (!cancelled())
+      run: df -hT
+
+    - name: Upload Bin Directory
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      uses: actions/upload-artifact@main
+      with:
+        name: OpenWrt-bin-x86_64-${{ env.DATE }}
+        path: ${{ env.OPENWRT_PATH }}/bin
+
+    - name: Organize Files
+      if: steps.compile.outputs.status == 'success'
+      run: |
+        cd $OPENWRT_PATH/bin/targets/*/*
+        cat config.buildinfo
+        echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
+        echo "MD5=$((md5sum *squashfs-sysupgrade* || md5sum *squashfs-combined-efi*) | awk '{print $1}')" >> $GITHUB_ENV
+        rm -rf packages *.buildinfo *.manifest *kernel.bin *rootfs.img.gz profiles.json sha256sums
+        rename 's/^openwrt/$Tempoary_CONFIG-openwrt/' * || true
+        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+
+    - name: Upload Firmware To Artifact
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE != 'true'
+      uses: actions/upload-artifact@main
+      with:
+        name: OpenWrt-firmware-x86_64-${{ env.DATE }}
+        path: ${{ env.FIRMWARE_PATH }}
+
+    - name: Upload Firmware To Release
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
+      uses: ncipollo/release-action@v1
+      with:
+        name: OpenWrt R${{ env.DATE }} 
+        allowUpdates: true
+        tag: lean-${{ env.SDATE }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: ${{ env.FIRMWARE_PATH }}/*
+        body: |
+          ### 📒 固件信息
+          - 💻 平台架构: x86_64
+          - ⚽ 固件源码: ${{ env.REPO_URL }}
+          - 💝 源码分支: ${{ env.REPO_BRANCH }}
+          - 🚀 内核版本: ${{ env.KERNEL }}
+          - 🌐 默认地址: ${{ env.DEFAULT_IP }}
+          - 🅫 MD5: ${{ env.MD5 }}
+          - 🔑 默认密码: 无 或 password
+
+    - name: Remove old Releases
+      uses: dev-drprasad/delete-older-releases@v0.2.1
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      with:
+        keep_latest: 12
+        delete_tags: true
+        delete_tag_pattern: lean
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Push Bark Notification
+      if: steps.compile.outputs.status == 'success' && env.SEND_BARK_MSG == 'true' && !cancelled()
+      uses: shink/bark-action@v2
+      with:
+        key: ${{ secrets.BARKKEY }}    # Your secret key, it is required
+        host: ${{ secrets.BARKHOST }}  # Your Bark host, the default is 'https://api.day.app'
+        title: OpenWrt 固件编译完成！
+        body: OpenWrt-k${{ env.KERNEL }}-x86_64-${{ env.Tempoary_CONFIG }}-${{ env.SDATE }}
+        sound: fanfare
+        isArchive: 1
+        url: https://github.com/${{ github.repository }}/releases
+        # automaticallyCopy: 1
+        # copy: Content copied to clipboard
