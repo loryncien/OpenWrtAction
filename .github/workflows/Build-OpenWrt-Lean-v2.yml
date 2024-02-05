@@ -176,7 +176,7 @@ jobs:
         cat config.buildinfo
         echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
         rm -rf packages *.buildinfo *.manifest *kernel.bin *rootfs.img.gz profiles.json sha256sums
-        rename 's/^/$Tempoary_CONFIG-/' *
+        rename -v "s/^openwrt/${{ env.Tempoary_CONFIG }}-openwrt/"" * || true
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
     - name: Upload Firmware To Artifact
@@ -206,7 +206,7 @@ jobs:
           - 🔑 默认密码: 无 或 password
 
     - name: Remove old Releases
-      uses: dev-drprasad/delete-older-releases@v0.2.1
+      uses: dev-drprasad/delete-older-releases@master
       if: env.FIRMWARE_RELEASE == 'true' && !cancelled()
       with:
         keep_latest: 12
