@@ -7,6 +7,7 @@ on:
       KERNEL_PATCHVER:
         description: '内核补丁版本(可选)'
         required: false
+        default: ''
         type: choice
         options:
           - '6.1'
@@ -28,7 +29,6 @@ env:
   UPLOAD_RELEASE: true
   SEND_BARK_MSG: true
   TZ: Asia/Shanghai
-  CLASH_KERNEL: amd64
   KERNEL_PATCHVER: ${{ github.event.inputs.KERNEL_PATCHVER }}
   Tempoary_CONFIG: ${{ github.event.inputs.Tempoary_CONFIG }}
 
@@ -98,7 +98,7 @@ jobs:
         chmod +x $GITHUB_WORKSPACE/scripts/*.sh
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
-        # $GITHUB_WORKSPACE/scripts/preset-clash-core.sh $CLASH_KERNEL
+        # $GITHUB_WORKSPACE/scripts/preset-clash-core.sh amd64
         $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
         [ -n "$KERNEL_PATCHVER" ] && sed -i "/KERNEL_PATCHVER/c KERNEL_PATCHVER:=$KERNEL_PATCHVER" target/linux/x86/Makefile
         ./scripts/feeds update -a && ./scripts/feeds install -a
