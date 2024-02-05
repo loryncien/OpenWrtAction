@@ -41,7 +41,7 @@ echo "Add luci-app-eqosplus"
 git clone --depth=1 https://github.com/sirpdboy/luci-app-eqosplus package/luci-app-eqosplus
 sed -i '/"Control"/d' package/luci-app-eqosplus/luasrc/controller/eqosplus.lua
 sed -i 's/10/99/g' package/luci-app-eqosplus/luasrc/controller/eqosplus.lua
-sed -i 's/\"control\"/\"network\"/g' `grep "control" -rl ./luci-app-eqosplus`
+sed -i 's/\"control\"/\"network\"/g' `grep "control" -rl package/luci-app-eqosplus`
 
 # 添加 poweroff 按钮
 curl -fsSL https://raw.githubusercontent.com/sirpdboy/other/master/patch/poweroff/poweroff.htm > feeds/luci/modules/luci-mod-admin-full/luasrc/view/admin_system/poweroff.htm
