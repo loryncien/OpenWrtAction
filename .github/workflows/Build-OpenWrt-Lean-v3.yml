@@ -109,11 +109,11 @@ jobs:
         $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
         [ -n "$KERNEL_PATCHVER" ] && sed -i "/KERNEL_PATCHVER/c KERNEL_PATCHVER:=$KERNEL_PATCHVER" target/linux/x86/Makefile
         ./scripts/feeds update -a && ./scripts/feeds install -a
+        cp -f $GITHUB_WORKSPACE/$CONFIG_FILE .config && make defconfig
 
     - name: Download DL Package
       run: |
         cd $OPENWRT_PATH
-        make defconfig
         make download -j$(($(nproc)+1))
         find dl -size -1024c -exec rm -f {} \;
 
@@ -142,6 +142,8 @@ jobs:
         make -j$(($(nproc)+1)) || make -j1 V=s
 
         echo "status=success" >> $GITHUB_OUTPUT
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
         echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "SDATE=$(date +"%Y%m%d")" >> $GITHUB_ENV
         echo "DEFAULT_IP=$(cat package/base-files/files/bin/config_generate | grep 'lan) ipad=' | awk -F '"' '{print $2}')" >> $GITHUB_ENV
