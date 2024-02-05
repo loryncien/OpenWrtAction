@@ -163,25 +163,26 @@ jobs:
         path: ${{ env.OPENWRT_PATH }}/bin
 
     - name: Organize Files
+      id: organize
       if: steps.compile.outputs.status == 'success'
       run: |
         cd $OPENWRT_PATH/bin/targets/*/*
         cat config.buildinfo
         echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
-        echo "MD5=$((md5sum *squashfs-sysupgrade* || md5sum *squashfs-combined-efi*) | awk '{print $1}')" >> $GITHUB_ENV
         rm -rf packages *.buildinfo *.manifest *kernel.bin *rootfs.img.gz profiles.json sha256sums
-        rename 's/^openwrt/$Tempoary_CONFIG-openwrt/' * || true
+        rename -v "s/^openwrt/${{ env.Tempoary_CONFIG }}-openwrt/" * || true
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload Firmware To Artifact
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE != 'true'
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE != 'true'
       uses: actions/upload-artifact@main
       with:
         name: OpenWrt-firmware-x86_64-${{ env.DATE }}
         path: ${{ env.FIRMWARE_PATH }}
 
     - name: Upload Firmware To Release
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
       uses: ncipollo/release-action@v1
       with:
         name: OpenWrt R${{ env.DATE }} 
@@ -196,7 +197,6 @@ jobs:
           - 💝 源码分支: ${{ env.REPO_BRANCH }}
           - 🚀 内核版本: ${{ env.KERNEL }}
           - 🌐 默认地址: ${{ env.DEFAULT_IP }}
-          - 🅫 MD5: ${{ env.MD5 }}
           - 🔑 默认密码: 无 或 password
 
     - name: Remove old Releases
@@ -210,7 +210,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Push Bark Notification
-      if: steps.compile.outputs.status == 'success' && env.SEND_BARK_MSG == 'true' && !cancelled()
+      if: steps.organize.outputs.status == 'success' && env.SEND_BARK_MSG == 'true' && !cancelled()
       uses: shink/bark-action@v2
       with:
         key: ${{ secrets.BARKKEY }}    # Your secret key, it is required
