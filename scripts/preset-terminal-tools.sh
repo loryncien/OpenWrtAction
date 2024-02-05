@@ -19,7 +19,7 @@ pushd files/root
 # cp $GITHUB_WORKSPACE/data/zsh/.zshrc .
 
 git clone --depth 1 https://github.com/skywind3000/z.lua.git ./.config/z.lua
-cat >> ~/.bashrc <<EOP 
+cat >> .bashrc <<EOP 
 # z.lua
 alias zc='z -c'      # 严格匹配当前路径的子路径
 alias zz='z -i'      # 使用交互式选择模式
