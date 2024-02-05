@@ -111,8 +111,8 @@ jobs:
         ./scripts/feeds update -a && ./scripts/feeds install -a
 
     - name: Download DL Package
-      working-directory: ./openwrt
       run: |
+        cd $OPENWRT_PATH
         make defconfig
         make download -j$(($(nproc)+1))
         find dl -size -1024c -exec rm -f {} \;
