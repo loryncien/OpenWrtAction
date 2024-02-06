@@ -1,8 +1,12 @@
-name: OpenWrt Lean X64 (v2)
+name: Build OpenWrt Lean X64 (v2)
 
 on:
   workflow_dispatch:
     inputs:
+      ssh:
+        description: 'SSH connection to Actions'
+        required: false
+        default: 'false'
       KERNEL_PATCHVER:
         description: '内核补丁版本'
         required: false
@@ -27,95 +31,79 @@ env:
   REPO_BRANCH: master
   CONFIG_FILE: config/lean-x86_64-${{ github.event.inputs.Tempoary_CONFIG }}.config
   DIY_SCRIPT: scripts/diy-lean.sh
-  CLASH_KERNEL: amd64
-  CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
-  FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: X86_64
+  UPLOAD_COWTRANSFER: false
+  UPLOAD_WETRANSFER: false
+  UPLOAD_RELEASE: true
   SEND_BARK_MSG: true
   TZ: Asia/Shanghai
   KERNEL_PATCHVER: ${{ github.event.inputs.KERNEL_PATCHVER }}
   Tempoary_CONFIG: ${{ github.event.inputs.Tempoary_CONFIG }}
-
 
 jobs:
   Build:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Check Server Performance
-      run: |
-        echo "警告⚠"
-        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
-        echo -e "已知CPU型号(降序): 7763，8370C，8272CL，8171M，E5-2673\n"
-        echo "--------------------------CPU信息--------------------------"
-        echo "CPU物理数量: $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
-        echo "CPU核心数量: $(nproc)"
-        echo -e "CPU型号信息:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
-        echo "--------------------------内存信息--------------------------"
-        echo "已安装内存详细信息:"
-        echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
-        echo "--------------------------硬盘信息--------------------------"
-        echo "硬盘数量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: true
+        
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        swap-storage: true
 
     - name: Initialization Environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        docker rmi $(docker images -q)
-        sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY
-        sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
-        sudo -E apt-get -y update
-        sudo -E apt-get -y install rename $(curl -fsSL is.gd/depends_ubuntu_2204)
-        sudo -E systemctl daemon-reload
-        sudo -E apt-get -y autoremove --purge
-        sudo -E apt-get -y clean
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq full-upgrade
+        sudo -E apt-get -qq install ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+        bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
+        git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libfuse-dev libglib2.0-dev libgmp3-dev \
+        libltdl-dev libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libpython3-dev libreadline-dev \
+        libssl-dev libtool lrzsz mkisofs msmtp ninja-build p7zip p7zip-full patch pkgconf python2.7 python3 \
+        python3-pyelftools python3-setuptools qemu-utils rsync scons squashfs-tools subversion swig texinfo \
+        uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
-
-    - name: Combine Disks
-      uses: easimon/maximize-build-space@master
-      with:
-        swap-size-mb: 1024
-        temp-reserve-mb: 100
-        root-reserve-mb: 1024
 
     - name: Checkout
       uses: actions/checkout@main
 
     - name: Clone Source Code
       run: |
-        df -hT $GITHUB_WORKSPACE
+        df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
-        echo "COMMIT_AUTHOR=$COMMIT_AUTHOR" >> $GITHUB_ENV
-        COMMIT_DATE=$(git show -s --date=short --format="时间: %ci")
-        echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
-        COMMIT_MESSAGE=$(git show -s --date=short --format="内容: %s")
-        echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
-        COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
-        echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
+        # sed -i '$a src-git smpackage https://github.com/kenzok8/small-package' feeds.conf.default
+        sed -i '$a src-git kenzo https://github.com/kenzok8/openwrt-packages' feeds.conf.default
+        sed -i '$a src-git small https://github.com/kenzok8/small' feeds.conf.default
 
-    - name: Generate Variables
-      run: |
-        cp $CONFIG_FILE $OPENWRT_PATH/.config
-        cd $OPENWRT_PATH
-        make defconfig > /dev/null 2>&1
-        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-
-    - name: Cache Toolchain
-      if: env.CACHE_TOOLCHAIN == 'true'
-      uses: HiGarfield/cachewrtbuild@main
+    - name: Cache
+      uses: stupidloud/cachewrtbuild@main
       with:
-        ccache: false
-        mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
-        prefix: ${{ env.OPENWRT_PATH }}
+        #是否一并缓存.ccache目录，如果你启用了ccache。这是唯一的常用参数，其他三个用于除错，一般不需要调整
+        ccache: 'true'
+        #是否缓存工具链目录 
+        toolchain: 'true' 
+        #是否跳过工具链编译
+        skip: 'true'
+        #清空缓存          
+        clean: 'false'
+        mixkey: lean-x86_64
+        prefix: ${{ github.workspace }}/openwrt
 
     - name: Install Feeds
       run: |
@@ -131,16 +119,24 @@ jobs:
         chmod +x $DIY_SCRIPT
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
-        # $GITHUB_WORKSPACE/scripts/preset-clash-core.sh $CLASH_KERNEL
+        # $GITHUB_WORKSPACE/scripts/preset-clash-core.sh amd64
         $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
 
         sed -i "/KERNEL_PATCHVER/c KERNEL_PATCHVER:=$KERNEL_PATCHVER" target/linux/x86/Makefile
         DEFAULT_IP=$(cat package/base-files/files/bin/config_generate | grep 'lan) ipad=' | awk -F '"' '{print $2}')
         echo "DEFAULT_IP=$DEFAULT_IP" >> $GITHUB_ENV
 
+    - name: SSH connection to Actions
+      uses: P3TERX/ssh2actions@v1.0.0
+      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+      env:
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
     - name: Download DL Package
       run: |
         cd $OPENWRT_PATH
+        echo -e 'CONFIG_DEVEL=y\nCONFIG_CCACHE=y' >> .config #Cache.Speedup
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
@@ -154,9 +150,13 @@ jobs:
         cp $GITHUB_WORKSPACE/scripts/init-settings.sh files/etc/uci-defaults/99-init-settings
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
+
         echo "status=success" >> $GITHUB_OUTPUT
         echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-        echo "FILE_DATE=$(date +"%Y%m%d")" >> $GITHUB_ENV
+        echo "SDATE=$(date +"%Y%m%d")" >> $GITHUB_ENV
+        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+        echo "DEFAULT_IP=$(cat package/base-files/files/bin/config_generate | grep 'lan) ipad=' | awk -F '"' '{print $2}')" >> $GITHUB_ENV
 
     - name: Check Space Usage
       if: (!cancelled())
@@ -166,63 +166,81 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       uses: actions/upload-artifact@main
       with:
-        name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+        name: OpenWrt-bin-x86_64-${{ env.DATE }}
         path: ${{ env.OPENWRT_PATH }}/bin
 
     - name: Organize Files
-      if: steps.compile.outputs.status == 'success'
+      if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         cd $OPENWRT_PATH/bin/targets/*/*
         cat config.buildinfo
         echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
         rm -rf packages *.buildinfo *.manifest *kernel.bin *rootfs.img.gz profiles.json sha256sums
-        rename -v "s/^openwrt/${{ env.Tempoary_CONFIG }}-openwrt/"" * || true
+        rename -v "s/^openwrt/${{ env.Tempoary_CONFIG }}-openwrt/" * || true
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: Upload Firmware To Artifact
-      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE != 'true' && !cancelled()
       uses: actions/upload-artifact@main
       with:
-        name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+        name: OpenWrt-firmware-x86_64-${{ env.DATE }}
         path: ${{ env.FIRMWARE_PATH }}
 
+    - name: Upload firmware to cowtransfer
+      id: cowtransfer
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_COWTRANSFER == 'true' && !cancelled()
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer cow --block 2621440 -s -p 64 --no-progress ${FIRMWARE_PATH} 2>&1 | tee cowtransfer.log
+        echo "::warning file=cowtransfer.com::$(cat cowtransfer.log | grep https)"
+        echo "url=$(cat cowtransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
+
+    - name: Upload firmware to WeTransfer
+      id: wetransfer
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_WETRANSFER == 'true' && !cancelled()
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer wet -s -p 16 --no-progress ${FIRMWARE_PATH} 2>&1 | tee wetransfer.log
+        echo "::warning file=wetransfer.com::$(cat wetransfer.log | grep https)"
+        echo "url=$(cat wetransfer.log | grep https | cut -f3 -d" ")" >> $GITHUB_OUTPUT
+
     - name: Upload Firmware To Release
-      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
+      if: steps.organize.outputs.status == 'success' && env.UPLOAD_RELEASE == 'true'
       uses: ncipollo/release-action@v1
       with:
-        name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
+        name: OpenWrt R${{ env.DATE }} 
         allowUpdates: true
-        tag: ${{ env.SOURCE_REPO }}-${{ env.FILE_DATE }}
+        tag: lean-${{ env.SDATE }}
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: ${{ env.FIRMWARE_PATH }}/*
         body: |
-          **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
           ### 📒 固件信息
-          - 💻 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
-          - ⚽ 固件源码: ${{ env.REPO_URL }}
-          - 💝 源码分支: ${{ env.REPO_BRANCH }}
+          - 💻 平台架构: x86_64
+          - ⚽ 固件源码: https://github.com/coolsnowwolf/lede
+          - 💝 源码分支: master
           - 🚀 内核版本: ${{ env.KERNEL }}
           - 🌐 默认地址: ${{ env.DEFAULT_IP }}
           - 🔑 默认密码: 无 或 password
 
     - name: Remove old Releases
       uses: dev-drprasad/delete-older-releases@master
-      if: env.FIRMWARE_RELEASE == 'true' && !cancelled()
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
       with:
         keep_latest: 12
         delete_tags: true
-        delete_tag_pattern: ${{ env.SOURCE_REPO }}
+        delete_tag_pattern: ^lean.*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Push Bark Notification
-      if: steps.compile.outputs.status == 'success' && env.SEND_BARK_MSG == 'true' && !cancelled()
+      if: steps.organize.outputs.status == 'success' && env.SEND_BARK_MSG == 'true' && !cancelled()
       uses: shink/bark-action@v2
       with:
         key: ${{ secrets.BARKKEY }}    # Your secret key, it is required
         host: ${{ secrets.BARKHOST }}  # Your Bark host, the default is 'https://api.day.app'
         title: OpenWrt 固件编译完成！
-        body: ${{ env.SOURCE_REPO }}-${{ env.DEVICE_TARGET }}_${{ env.DEVICE_SUBTARGET }}-${{ env.KERNEL }}-${{ env.Tempoary_CONFIG }}-${{ env.FILE_DATE }}
+        body: OpenWrt-k${{ env.KERNEL }}-x86_64-${{ env.Tempoary_CONFIG }}-${{ env.SDATE }}
         sound: fanfare
         isArchive: 1
         url: https://github.com/${{ github.repository }}/releases
