@@ -38,6 +38,9 @@ set dhcp.@dnsmasq[0].rebind_protection='1'
 set turboacc.config.sfe_flow='0'
 set turboacc.config.sw_flow='0'
 set turboacc.config.hw_flow='0'
+
+set nlbwmon.@nlbwmon[0].refresh_interval=2s
+
 commit
 EOF
 
@@ -64,7 +67,7 @@ EOF
 }
 
 # Disable opkg signature check
-sed -i 's/option check_signature/# option check_signature/g' /etc/opkg.conf
+sed -i 's/^option check_signature/# &/g' /etc/opkg.conf
 # Delete the line containing the keyword in distfeeds.conf
 sed -i '/passwall\|helloworld\|OpenClash/d' /etc/opkg/distfeeds.conf
 sed -i '/kenzo\|small/d' /etc/opkg/distfeeds.conf
