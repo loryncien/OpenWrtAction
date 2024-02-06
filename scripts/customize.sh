@@ -52,6 +52,30 @@ sed -i 's#interval: 5#interval: 2#g' $(find feeds/luci/applications -name 'wrtbw
 sed -i 's# selected="selected"##' $(find feeds/luci/applications -name 'wrtbwmon.htm')
 sed -i 's#"2"#& selected="selected"#' $(find feeds/luci/applications -name 'wrtbwmon.htm')
 
+echo "Add luci-app-unblockneteasemusic core"
+# luci-app-unblockneteasemusic
+find ./ -maxdepth 4 -iname "luci-app-unblockneteasemusic" -type d | xargs rm -rf
+git clone --depth=1 -b master https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic.git package/luci-app-unblockneteasemusic
+# uclient-fetch Use IPv4 only
+sed -i 's/uclient-fetch/uclient-fetch -4/g' package/luci-app-unblockneteasemusic/root/usr/share/unblockneteasemusic/update.sh
+# rename
+sed -i 's/"解除网易云音乐播放限制"/"解锁网易云灰色音乐"/g' `grep "解除网易云音乐播放限制" -rl package/luci-app-unblockneteasemusic`
+# unblockneteasemusic core
+NAME=$"package/luci-app-unblockneteasemusic/root/usr/share/unblockneteasemusic" && mkdir -p $NAME/core
+curl 'https://api.github.com/repos/UnblockNeteaseMusic/server/commits?sha=enhanced&path=precompiled' -o commits.json
+echo "$(grep sha commits.json | sed -n "1,1p" | cut -c 13-52)">"$NAME/core_local_ver"
+curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/precompiled/app.js -o $NAME/core/app.js
+curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/precompiled/bridge.js -o $NAME/core/bridge.js
+curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/ca.crt -o $NAME/core/ca.crt
+curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/server.crt -o $NAME/core/server.crt
+curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/server.key -o $NAME/core/server.key
+
+# 修改makefile
+find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/luci.mk/$(TOPDIR)\/feeds\/luci\/luci.mk/g' {}
+find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/lang\/golang\/golang-package.mk/$(TOPDIR)\/feeds\/packages\/lang\/golang\/golang-package.mk/g' {}
+find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/PKG_SOURCE_URL:=@GHREPO/PKG_SOURCE_URL:=https:\/\/github.com/g' {}
+find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/PKG_SOURCE_URL:=@GHCODELOAD/PKG_SOURCE_URL:=https:\/\/codeload.github.com/g' {}
+
 # Modify default IP
 #sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generate
 
