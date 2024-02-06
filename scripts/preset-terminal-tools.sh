@@ -30,10 +30,10 @@ alias zh='z -i -t .' # 历史路径
 
 # When you are using j xxx it will first try cd xxx and then z xxx if cd failed.
 function j() {
-    if [[ "$argv[1]" == "-"* ]]; then
-        z "$@"
+    if [[ "\$argv[1]" == "-"* ]]; then
+        z "\$@"
     else
-        cd "$@" 2> /dev/null || z "$@"
+        cd "\$@" 2> /dev/null || z "\$@"
     fi
 }
 
