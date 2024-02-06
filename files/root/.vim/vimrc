@@ -15,9 +15,6 @@ Plug 'yianwillis/vimcdoc'
 Plug 'mhinz/vim-startify'
 Plug 'easymotion/vim-easymotion'
 Plug 'morhetz/gruvbox'
-Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
-" Plug '/usr/bin/fzf'
-Plug 'junegunn/fzf.vim'
 call plug#end()
 
 " === 常用自定义快捷键 === {{{2
