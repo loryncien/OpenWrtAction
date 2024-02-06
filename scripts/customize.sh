@@ -43,14 +43,9 @@ sed -i '/"Control"/d' package/luci-app-eqosplus/luasrc/controller/eqosplus.lua
 sed -i 's/10/99/g' package/luci-app-eqosplus/luasrc/controller/eqosplus.lua
 sed -i 's/\"control\"/\"network\"/g' `grep "control" -rl package/luci-app-eqosplus`
 
-# 添加 poweroff 按钮
-curl -fsSL https://raw.githubusercontent.com/sirpdboy/other/master/patch/poweroff/poweroff.htm > feeds/luci/modules/luci-mod-admin-full/luasrc/view/admin_system/poweroff.htm
-curl -fsSL https://raw.githubusercontent.com/sirpdboy/other/master/patch/poweroff/system.lua > feeds/luci/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
-
-# luci-app-wrtbwmon 5s to 2s
-sed -i 's#interval: 5#interval: 2#g' $(find feeds/luci/applications -name 'wrtbwmon.js')
-sed -i 's# selected="selected"##' $(find feeds/luci/applications -name 'wrtbwmon.htm')
-sed -i 's#"2"#& selected="selected"#' $(find feeds/luci/applications -name 'wrtbwmon.htm')
+echo "Add luci-theme-argon"
+find ./ -maxdepth 4 -iname "luci-theme-argon" -type d | xargs rm -rf
+git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
 
 echo "Add luci-app-unblockneteasemusic core"
 # luci-app-unblockneteasemusic
@@ -75,6 +70,15 @@ find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/luci
 find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/lang\/golang\/golang-package.mk/$(TOPDIR)\/feeds\/packages\/lang\/golang\/golang-package.mk/g' {}
 find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/PKG_SOURCE_URL:=@GHREPO/PKG_SOURCE_URL:=https:\/\/github.com/g' {}
 find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/PKG_SOURCE_URL:=@GHCODELOAD/PKG_SOURCE_URL:=https:\/\/codeload.github.com/g' {}
+
+# 添加 poweroff 按钮
+curl -fsSL https://raw.githubusercontent.com/sirpdboy/other/master/patch/poweroff/poweroff.htm > feeds/luci/modules/luci-mod-admin-full/luasrc/view/admin_system/poweroff.htm
+curl -fsSL https://raw.githubusercontent.com/sirpdboy/other/master/patch/poweroff/system.lua > feeds/luci/modules/luci-mod-admin-full/luasrc/controller/admin/system.lua
+
+# luci-app-wrtbwmon 5s to 2s
+sed -i 's#interval: 5#interval: 2#g' $(find feeds/luci/applications -name 'wrtbwmon.js')
+sed -i 's# selected="selected"##' $(find feeds/luci/applications -name 'wrtbwmon.htm')
+sed -i 's#"2"#& selected="selected"#' $(find feeds/luci/applications -name 'wrtbwmon.htm')
 
 # Modify default IP
 #sed -i 's/192.168.1.1/192.168.2.1/g' package/base-files/files/bin/config_generate
