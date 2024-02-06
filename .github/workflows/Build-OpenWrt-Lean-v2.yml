@@ -8,9 +8,9 @@ on:
         required: false
         default: 'false'
       KERNEL_PATCHVER:
-        description: '内核补丁版本'
+        description: '内核补丁版本(可选)'
         required: false
-        default: '6.1'
+        default: ''
         type: choice
         options:
           - '6.1'
@@ -27,8 +27,6 @@ on:
   #   - cron: 0 19 * * *
 
 env:
-  REPO_URL: https://github.com/coolsnowwolf/lede
-  REPO_BRANCH: master
   CONFIG_FILE: config/lean-x86_64-${{ github.event.inputs.Tempoary_CONFIG }}.config
   DIY_SCRIPT: scripts/customize.sh
   UPLOAD_BIN_DIR: false
@@ -82,6 +80,9 @@ jobs:
       uses: actions/checkout@main
 
     - name: Clone Source Code
+      env:
+        REPO_URL: https://github.com/coolsnowwolf/lede
+        REPO_BRANCH: master
       run: |
         df -hT $PWD
         git clone $REPO_URL -b $REPO_BRANCH openwrt
@@ -122,9 +123,7 @@ jobs:
         # $GITHUB_WORKSPACE/scripts/preset-clash-core.sh amd64
         $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
 
-        sed -i "/KERNEL_PATCHVER/c KERNEL_PATCHVER:=$KERNEL_PATCHVER" target/linux/x86/Makefile
-        DEFAULT_IP=$(cat package/base-files/files/bin/config_generate | grep 'lan) ipad=' | awk -F '"' '{print $2}')
-        echo "DEFAULT_IP=$DEFAULT_IP" >> $GITHUB_ENV
+        [ -n "$KERNEL_PATCHVER" ] && sed -i "/KERNEL_PATCHVER/c KERNEL_PATCHVER:=$KERNEL_PATCHVER" target/linux/x86/Makefile
 
     - name: SSH connection to Actions
       uses: P3TERX/ssh2actions@v1.0.0
@@ -136,7 +135,7 @@ jobs:
     - name: Download DL Package
       run: |
         cd $OPENWRT_PATH
-        echo -e 'CONFIG_DEVEL=y\nCONFIG_CCACHE=y' >> .config #Cache.Speedup
+        echo -e 'CONFIG_DEVEL=y\nCONFIG_CCACHE=y' >> .config # Cache.Speedup
         make defconfig
         make download -j8
         find dl -size -1024c -exec ls -l {} \;
@@ -175,7 +174,7 @@ jobs:
         cat config.buildinfo
         echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
         rm -rf packages *.buildinfo *.manifest *kernel.bin *rootfs.img.gz profiles.json sha256sums
-        rename -v "s/^openwrt/${{ env.Tempoary_CONFIG }}-openwrt/" * || true
+        rename -v "s|^openwrt|${{ env.Tempoary_CONFIG }}-openwrt|" *
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
