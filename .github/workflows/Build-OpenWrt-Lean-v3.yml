@@ -1,4 +1,4 @@
-name: OpenWrt Lean X64 (v3)
+name: Build OpenWrt Lean X64 (v3)
 
 on:
   workflow_dispatch:
@@ -94,6 +94,7 @@ jobs:
       run: |
         cd $OPENWRT_PATH
         ./scripts/feeds update -a
+        ./scripts/feeds install -a
 
     - name: Load Custom Configuration
       env:
@@ -108,12 +109,11 @@ jobs:
         # $GITHUB_WORKSPACE/scripts/preset-clash-core.sh amd64
         $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
         [ -n "$KERNEL_PATCHVER" ] && sed -i "/KERNEL_PATCHVER/c KERNEL_PATCHVER:=$KERNEL_PATCHVER" target/linux/x86/Makefile
-        ./scripts/feeds update -a && ./scripts/feeds install -a
-        cp -f $GITHUB_WORKSPACE/$CONFIG_FILE .config && make defconfig
 
     - name: Download DL Package
       run: |
         cd $OPENWRT_PATH
+        make defconfig
         make download -j$(($(nproc)+1))
         find dl -size -1024c -exec rm -f {} \;
 
