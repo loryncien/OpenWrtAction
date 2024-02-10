@@ -95,9 +95,13 @@ cp -f $GITHUB_WORKSPACE/data/banner package/base-files/files/etc/banner
 # samba解除root限制
 sed -i 's/invalid users = root/#&/g' feeds/packages/net/samba4/files/smb.conf.template
 
-pushd package/lean/default-settings/files
+# Modify localtime in Homepage
+echo 'Modify localtime in Homepage...'
+sed -i 's/os.date()/os.date("%Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/x86/index.htm
+# Modify hostname in Homepage
+sed -i 's/${g}'"'"' - '"'"'//g' package/lean/autocore/files/x86/autocore
+
 # 设置密码为空
-sed -i 's@.*CYXluq4wUazHjmCDBCqXF*@#&@g' zzz-default-settings
+sed -i 's@.*CYXluq4wUazHjmCDBCqXF*@#&@g' package/lean/default-settings/files/zzz-default-settings
 # 版本号里显示编译时间
-sed -ri "s#(R[0-9].*[0-9])#\1 (By @Cheng build $(TZ=UTC-8 date "+%Y-%m-%d")) #g" zzz-default-settings
-popd
+sed -ri "s#(R[0-9].*[0-9])#\1 (By @Cheng build $(TZ=UTC-8 date "+%Y-%m-%d")) #g" package/lean/default-settings/files/zzz-default-settings
