@@ -99,7 +99,7 @@ sed -i 's/invalid users = root/#&/g' feeds/packages/net/samba4/files/smb.conf.te
 echo 'Modify localtime in Homepage...'
 sed -i 's/os.date()/os.date("%Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/x86/index.htm
 # Modify hostname in Homepage
-sed -i 's/${g}'"'"' - '"'"'//g' package/lean/autocore/files/x86/autocore
+sed -i "s/\${g}' - '//g" package/lean/autocore/files/x86/autocore
 
 # 设置密码为空
 sed -i 's@.*CYXluq4wUazHjmCDBCqXF*@#&@g' package/lean/default-settings/files/zzz-default-settings
