@@ -174,7 +174,7 @@ jobs:
         cat config.buildinfo
         echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
         rm -rf packages *.buildinfo *.manifest *kernel.bin *rootfs.img.gz profiles.json sha256sums
-        rename -v "s|^openwrt|${{ env.Tempoary_CONFIG }}-openwrt|" *
+        rename -v "s/^openwrt/${{ env.Tempoary_CONFIG }}-openwrt/" * || true
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
