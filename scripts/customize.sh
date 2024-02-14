@@ -37,12 +37,6 @@ rm -rf feeds/luci/applications/luci-app-netdata
 git clone --depth=1 https://github.com/sirpdboy/luci-app-netdata package/luci-app-netdata
 ln -s package/luci-app-netdata/po/zh-cn package/luci-app-netdata/po/zh_Hans
 
-echo "Add luci-app-eqosplus"
-git clone --depth=1 https://github.com/sirpdboy/luci-app-eqosplus package/luci-app-eqosplus
-sed -i '/"Control"/d' package/luci-app-eqosplus/luasrc/controller/eqosplus.lua
-sed -i 's/10/99/g' package/luci-app-eqosplus/luasrc/controller/eqosplus.lua
-sed -i 's/\"control\"/\"network\"/g' `grep "control" -rl package/luci-app-eqosplus`
-
 echo "Add luci-theme-argon"
 find ./ -maxdepth 4 -iname "luci-theme-argon" -type d | xargs rm -rf
 git clone -b 18.06 https://github.com/jerrykuku/luci-theme-argon.git package/luci-theme-argon
@@ -64,6 +58,10 @@ curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/precompiled/b
 curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/ca.crt -o $NAME/core/ca.crt
 curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/server.crt -o $NAME/core/server.crt
 curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/server.key -o $NAME/core/server.key
+
+# curl/8.5.0 - fix passwall `time_pretransfer` check
+rm -rf feeds/packages/net/curl
+git clone https://github.com/sbwml/feeds_packages_net_curl feeds/packages/net/curl
 
 # 修改makefile
 find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/luci.mk/$(TOPDIR)\/feeds\/luci\/luci.mk/g' {}
