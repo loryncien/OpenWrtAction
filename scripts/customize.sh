@@ -60,8 +60,8 @@ curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/server.crt -o
 curl -L https://github.com/UnblockNeteaseMusic/server/raw/enhanced/server.key -o $NAME/core/server.key
 
 # curl/8.5.0 - fix passwall `time_pretransfer` check
-rm -rf feeds/packages/net/curl
-git clone https://github.com/sbwml/feeds_packages_net_curl feeds/packages/net/curl
+#rm -rf feeds/packages/net/curl
+#git clone https://github.com/sbwml/feeds_packages_net_curl feeds/packages/net/curl
 
 # 修改makefile
 find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/luci.mk/$(TOPDIR)\/feeds\/luci\/luci.mk/g' {}
