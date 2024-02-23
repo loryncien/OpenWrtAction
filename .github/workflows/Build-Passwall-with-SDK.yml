@@ -76,7 +76,8 @@ jobs:
         include:
           - sdk_ver: lean
             luci_ver: 18.06
-            sdk_url: $(curl -s https://api.github.com/repos/${{ github.repository }}/releases | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}' | head -n1)
+            runs: |
+              echo "::set-output name=sdk_url::$(curl -s https://api.github.com/repos/${{ github.repository }}/releases | grep 'browser_download_url.*sdk' | awk -F '\"' '{print $4}' | head -n1)"
 
           - sdk_ver: 23.05
             luci_ver: 23.05
