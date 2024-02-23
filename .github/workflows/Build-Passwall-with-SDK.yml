@@ -74,12 +74,12 @@ jobs:
         include:
           - sdk_ver: lean
             luci_ver: 18.06
-            runs: |
-              echo "::set-output name=sdk_url::echo $(curl -s https://api.github.com/repos/loryncien/OpenWrtAction/releases | grep 'browser_download_url.*sdk' | awk -F '\"' '{print $4}' | head -n1)"
+            sdk_url: https://github.com/loryncien/OpenWrtAction/releases/download/lean-202311022220/openwrt-sdk-x86-64_gcc-11.3.0_musl.Linux-x86_64.tar.xz
 
           - sdk_ver: 23.05
             luci_ver: 23.05
             sdk_url: https://downloads.openwrt.org/releases/23.05.0/targets/x86/64/openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
+    
     steps:
       - name: Install packages
         run: |
@@ -267,7 +267,6 @@ jobs:
           echo "## :mega:Update content" >> release.txt
           echo "### Passwall Info" >> release.txt
           echo "**:minidisc: Passwall Version: ${{needs.job_check.outputs.passwall_version}}**" >> release.txt
-          echo "**:gear: OpenWrt SDK Version: [Lean's LEDE source](https://github.com/coolsnowwolf/lede)**" >> release.txt
 
           echo "### Packages Version" >> release.txt
           echo "**package name**|**package version**" >> release.txt
