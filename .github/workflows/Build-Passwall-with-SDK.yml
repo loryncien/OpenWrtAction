@@ -68,8 +68,6 @@ jobs:
     needs: job_check
     if: needs.job_check.outputs.has_update == 'true'
     runs-on: ubuntu-latest
-    outputs:
-      url_sdk: ${{ steps.sdk_env.outputs.SDK_URL }}
     strategy:
       fail-fast: false
       matrix:
