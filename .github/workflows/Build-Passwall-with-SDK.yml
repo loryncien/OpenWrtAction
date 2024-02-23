@@ -138,7 +138,7 @@ jobs:
           rm .config .config.old
           cd ../passwall
           for i in $(ls); do mv $i luci-${{ matrix.luci_ver }}_$i; done
-          cd .
+          cd ..
           echo "status=success" >> $GITHUB_OUTPUT
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
