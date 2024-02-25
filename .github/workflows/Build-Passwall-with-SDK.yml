@@ -72,9 +72,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - sdk_ver: lean
-            luci_ver: 18.06
-            sdk_url: https://github.com/loryncien/OpenWrtAction/releases/download/lean-202311022220/openwrt-sdk-x86-64_gcc-11.3.0_musl.Linux-x86_64.tar.xz
+          - sdk_ver: 21.02
+            luci_ver: 19.07
+            sdk_url: https://downloads.openwrt.org/releases/21.02.5/targets/x86/64/openwrt-sdk-21.02.5-x86-64_gcc-8.4.0_musl.Linux-x86_64.tar.xz
 
           - sdk_ver: 23.05
             luci_ver: 23.05
@@ -105,6 +105,10 @@ jobs:
           file_name=$(echo ${{ matrix.sdk_url }} | awk -F/ '{print $NF}')
           mkdir sdk && tar -xJf $file_name -C ./sdk --strip-components=1
           cd sdk
+          echo "src-git base https://github.com/openwrt/openwrt.git;openwrt-${{ matrix.sdk_ver }}" > feeds.conf
+          echo "src-git packages https://github.com/openwrt/packages.git;openwrt-${{ matrix.sdk_ver }}" >> feeds.conf
+          echo "src-git luci https://github.com/openwrt/luci.git;openwrt-${{ matrix.luci_ver }}" >> feeds.conf
+          echo "src-git routing https://git.openwrt.org/feed/routing.git;openwrt-${{ matrix.sdk_ver }}"  >> feeds.conf
           echo "src-git passwall_packages https://github.com/${{ env.packages }}.git;main" >> feeds.conf
           echo "src-git passwall https://github.com/${{ env.passwall }}.git;main" >> feeds.conf
           ./scripts/feeds update -a
