@@ -64,7 +64,7 @@ jobs:
 
 
   job_build_passwall:
-    name: Build passwall [Luci ${{ matrix.luci_ver }}]
+    name: Build luci-app-passwall [${{ matrix.luci_ver }}]
     needs: job_check
     if: needs.job_check.outputs.has_update == 'true'
     runs-on: ubuntu-latest
@@ -79,7 +79,6 @@ jobs:
           - sdk_ver: 23.05
             luci_ver: 23.05
             sdk_url: https://downloads.openwrt.org/releases/23.05.0/targets/x86/64/openwrt-sdk-23.05.0-x86-64_gcc-12.3.0_musl.Linux-x86_64.tar.xz
-    
     steps:
       - name: Install packages
         run: |
@@ -102,9 +101,12 @@ jobs:
         id: sdk_env
         if: steps.cache-sdk.outputs.cache-hit != 'true'
         run: |
-          wget ${{ matrix.sdk_url }}
-          file_name=$(echo ${{ matrix.sdk_url }} | awk -F/ '{print $NF}')
-          mkdir sdk && tar -xJf $file_name -C ./sdk --strip-components=1
+          SDK_URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}' | head -n1)
+          echo "SDK_URL=echo $SDK_URL" >> $GITHUB_OUTPUT
+          echo "SDK_URL=echo $SDK_URL" >> $GITHUB_ENV
+          
+          wget -qO- $SDK_URL | tar -xJ
+          mv openwrt-sdk-* sdk
           cd sdk
           echo "src-git passwall_packages https://github.com/${{ env.packages }}.git;main" >> feeds.conf
           echo "src-git passwall https://github.com/${{ env.passwall }}.git;main" >> feeds.conf
