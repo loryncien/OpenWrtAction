@@ -101,12 +101,9 @@ jobs:
         id: sdk_env
         if: steps.cache-sdk.outputs.cache-hit != 'true'
         run: |
-          SDK_URL=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases | grep "browser_download_url.*sdk" | awk -F '"' '{print $4}' | head -n1)
-          echo "SDK_URL=echo $SDK_URL" >> $GITHUB_OUTPUT
-          echo "SDK_URL=echo $SDK_URL" >> $GITHUB_ENV
-          
-          wget -qO- $SDK_URL | tar -xJ
-          mv openwrt-sdk-* sdk
+          wget ${{ matrix.sdk_url }}
+          file_name=$(echo ${{ matrix.sdk_url }} | awk -F/ '{print $NF}')
+          mkdir sdk && tar -xJf $file_name -C ./sdk --strip-components=1
           cd sdk
           echo "src-git passwall_packages https://github.com/${{ env.packages }}.git;main" >> feeds.conf
           echo "src-git passwall https://github.com/${{ env.passwall }}.git;main" >> feeds.conf
@@ -127,6 +124,25 @@ jobs:
           echo "CONFIG_AUTOREMOVE=n" >> .config
           echo "CONFIG_LUCI_LANG_zh_Hans=y" >> .config
           echo "CONFIG_PACKAGE_luci-app-passwall=m" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_Iptables_Transparent_Proxy=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_Nftables_Transparent_Proxy is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Haproxy=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Hysteria is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_NaiveProxy is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Client=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Libev_Server=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Client is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Shadowsocks_Rust_Server is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Client=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_ShadowsocksR_Libev_Server is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Simple_Obfs=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Trojan_Plus=y" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_tuic_client is not set" >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Geodata is not set" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_V2ray_Plugin=y" >> .config
+          echo "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray=y  " >> .config
+          echo "# CONFIG_PACKAGE_luci-app-passwall_INCLUDE_Xray_Plugin is not set" >> .config
           make defconfig
 
       - name: Compile passwall
